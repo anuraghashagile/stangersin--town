@@ -4,11 +4,28 @@ import { supabase, getGlobalMessages, insertGlobalMessage } from '../lib/supabas
 import { Message, UserProfile } from '../types';
 
 export const useGlobalChat = (userProfile: UserProfile | null, myPeerId: string | null) => {
-  const [globalMessages, setGlobalMessages] = useState<Message[]>([]);
+  const [globalMessages, setGlobalMessages] = useState<Message[]>(() => {
+     // Initialize from LocalStorage for instant display
+     if (typeof window !== 'undefined') {
+        try {
+           const saved = localStorage.getItem('global_meet_messages');
+           if (saved) return JSON.parse(saved);
+        } catch(e) {}
+     }
+     return [];
+  });
+  
   const [isReady, setIsReady] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // 1. Initial History Load
+  // Persistence: Save to LocalStorage whenever messages change
+  useEffect(() => {
+     try {
+        localStorage.setItem('global_meet_messages', JSON.stringify(globalMessages));
+     } catch(e) {}
+  }, [globalMessages]);
+
+  // 1. Initial History Load (Merge with local)
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -25,7 +42,17 @@ export const useGlobalChat = (userProfile: UserProfile | null, myPeerId: string 
         timestamp: new Date(row.created_at).getTime(),
         type: 'text'
       }));
-      setGlobalMessages(formatted);
+      
+      setGlobalMessages(prev => {
+         // Deduplicate
+         const existingIds = new Set(prev.map(m => m.id));
+         const newMsgs = formatted.filter(m => !existingIds.has(m.id));
+         if (newMsgs.length === 0) return prev;
+         
+         const combined = [...prev, ...newMsgs].sort((a,b) => a.timestamp - b.timestamp);
+         // Keep latest 100
+         return combined.slice(-100);
+      });
       setIsReady(true);
     };
     load();
@@ -87,7 +114,6 @@ export const useGlobalChat = (userProfile: UserProfile | null, myPeerId: string 
     }
 
     // C. Background DB Insert (Persistence)
-    // We don't await this to keep UI snappy. Errors are logged but don't block.
     insertGlobalMessage(text, userProfile, myPeerId);
 
   }, [userProfile, myPeerId]);
