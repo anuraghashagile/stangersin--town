@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, UserCheck, Clock } from 'lucide-react';
+import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock } from 'lucide-react';
 import { UserProfile, PresenceState, RecentPeer, Message, ChatMode, SessionType, Friend, FriendRequest, DirectMessageEvent, DirectStatusEvent } from '../types';
 import { clsx } from 'clsx';
 import { MessageBubble } from './MessageBubble';
@@ -624,8 +624,14 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                          <div ref={messagesEndRef} />
                       </div>
                       <form onSubmit={handleGlobalSubmit} className="mt-auto flex gap-2 shrink-0 pb-1">
-                         <input className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all" placeholder="Message Global Meet..." value={globalInput} onChange={e => setGlobalInput(e.target.value)} />
-                         <button type="submit" className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20"><Send size={18} /></button>
+                         <input 
+                           className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all disabled:opacity-50" 
+                           placeholder={!myPeerId ? "Connecting to Global..." : "Message Global Meet..."} 
+                           value={globalInput} 
+                           onChange={e => setGlobalInput(e.target.value)} 
+                           disabled={!myPeerId}
+                         />
+                         <button type="submit" disabled={!myPeerId} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50"><Send size={18} /></button>
                       </form>
                     </div>
                   )}

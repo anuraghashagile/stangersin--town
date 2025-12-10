@@ -3,51 +3,54 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, getGlobalMessages, insertGlobalMessage } from '../lib/supabase';
 import { Message, UserProfile } from '../types';
 
-const GLOBAL_STORAGE_KEY = 'global_meet_history';
-
 export const useGlobalChat = (userProfile: UserProfile | null, myPeerId: string | null) => {
   const [globalMessages, setGlobalMessages] = useState<Message[]>([]);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  // 1. Initial Load: Try LocalStorage first (instant), then Database (fresh)
+  // 1. Initial Load from Database
   useEffect(() => {
-    // Load local cache immediately
-    try {
-      const cached = localStorage.getItem(GLOBAL_STORAGE_KEY);
-      if (cached) {
-        setGlobalMessages(JSON.parse(cached));
-      }
-    } catch (e) {}
-
-    // Fetch fresh from DB
-    const fetchDb = async () => {
-      const msgs = await getGlobalMessages();
-      if (msgs && msgs.length > 0) {
-        // We need to re-apply "sender: me" logic based on current ID
-        const processed = msgs.map(m => ({
-          ...m,
-          sender: (m.senderPeerId === myPeerId) ? 'me' as const : 'stranger' as const
-        }));
-        setGlobalMessages(processed);
-        localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(processed));
-      }
+    let mounted = true;
+    const loadInitial = async () => {
+      const data = await getGlobalMessages();
+      if (!mounted) return;
+      
+      const formatted: Message[] = data.reverse().map((row: any) => ({
+        id: row.id.toString(),
+        text: row.content,
+        sender: row.sender_id === myPeerId ? 'me' : 'stranger',
+        senderName: row.sender_name,
+        senderPeerId: row.sender_id,
+        senderProfile: row.sender_profile,
+        timestamp: new Date(row.created_at).getTime(),
+        type: 'text'
+      }));
+      
+      setGlobalMessages(formatted);
+      setIsReady(true);
     };
 
-    fetchDb();
-  }, [myPeerId]); // Re-run if ID changes to update 'me' vs 'stranger'
+    loadInitial();
+    
+    return () => { mounted = false; };
+  }, []); // Run once on mount to fetch history
 
-  // 2. Subscribe to REALTIME DATABASE changes (Insert)
+  // 2. Subscribe to Realtime Updates
   useEffect(() => {
-    const channel = supabase.channel('global-meet-realtime')
+    const channel = supabase.channel('global-chat-fresh')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'global_messages' },
         (payload) => {
           const row = payload.new;
+          
+          // Determine if it's me (checking current myPeerId ref would be ideal, but state works for now)
+          // We use the passed myPeerId to determine 'me' vs 'stranger'
+          const isMe = row.sender_id === myPeerId;
+          
           const newMessage: Message = {
             id: row.id.toString(),
             text: row.content,
-            sender: (row.sender_id === myPeerId) ? 'me' : 'stranger',
+            sender: isMe ? 'me' : 'stranger',
             senderName: row.sender_name,
             senderPeerId: row.sender_id,
             senderProfile: row.sender_profile,
@@ -56,60 +59,41 @@ export const useGlobalChat = (userProfile: UserProfile | null, myPeerId: string 
           };
 
           setGlobalMessages(prev => {
-            // Deduplicate
-            if (prev.some(m => m.id === newMessage.id)) return prev;
-            const updated = [...prev, newMessage];
-            // Keep last 50
-            if (updated.length > 50) return updated.slice(updated.length - 50);
-            return updated;
+             // Deduplicate by ID just in case
+             if (prev.some(m => m.id === newMessage.id)) return prev;
+             // Keep size manageable
+             const next = [...prev, newMessage];
+             if (next.length > 100) return next.slice(next.length - 100);
+             return next;
           });
         }
       )
       .subscribe();
 
-    channelRef.current = channel;
-
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [myPeerId]);
+  }, [myPeerId]); // Re-subscribe if ID changes to ensure 'me' logic is correct
 
-  // 3. Save to LocalStorage on update
-  useEffect(() => {
-    if (globalMessages.length > 0) {
-      localStorage.setItem(GLOBAL_STORAGE_KEY, JSON.stringify(globalMessages));
-    }
-  }, [globalMessages]);
-
+  // 3. Send Function
   const sendGlobalMessage = useCallback(async (text: string) => {
-    if (!userProfile) return;
-
-    // Optimistic Update
-    const tempId = 'temp-' + Date.now();
-    const optimisticMsg: Message = {
-      id: tempId,
-      text,
-      sender: 'me',
-      senderName: userProfile.username,
-      senderPeerId: myPeerId || undefined,
-      senderProfile: userProfile,
-      timestamp: Date.now(),
-      type: 'text'
-    };
-
-    setGlobalMessages(prev => [...prev, optimisticMsg]);
+    if (!userProfile || !myPeerId) {
+       console.warn("Cannot send global message: Profile or ID missing");
+       return;
+    }
 
     try {
-      await insertGlobalMessage(text, userProfile, myPeerId || undefined);
+      await insertGlobalMessage(text, userProfile, myPeerId);
+      // We rely on the subscription to add the message to the list
+      // This ensures what we see is what is actually in the DB
     } catch (e) {
-      // If failed, remove optimistic message
-      setGlobalMessages(prev => prev.filter(m => m.id !== tempId));
       alert("Failed to send message. Please checking your internet connection.");
     }
   }, [userProfile, myPeerId]);
 
   return {
     globalMessages,
-    sendGlobalMessage
+    sendGlobalMessage,
+    isReady: isReady && !!myPeerId
   };
 };
