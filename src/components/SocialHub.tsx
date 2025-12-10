@@ -396,7 +396,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                    </div>
                 </div>
               ) : (
-                <h2 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">Social Hub</h2>
+                <h2 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">Global Meet</h2>
               )}
               <div className="flex items-center gap-1">
                 {activePeer && isFriend(activePeer.id) && (
@@ -626,10 +626,10 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                       <form onSubmit={handleGlobalSubmit} className="mt-auto flex gap-2 shrink-0 pb-1">
                          <input 
                            className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all disabled:opacity-50" 
-                           placeholder={!myPeerId ? "Connecting to Global..." : "Message Global Meet..."} 
+                           placeholder={!myPeerId ? "Connecting..." : "Message Global Meet..."} 
                            value={globalInput} 
                            onChange={e => setGlobalInput(e.target.value)} 
-                           disabled={!myPeerId}
+                           disabled={false}
                          />
                          <button type="submit" disabled={!myPeerId} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50"><Send size={18} /></button>
                       </form>
