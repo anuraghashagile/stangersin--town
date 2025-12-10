@@ -1,11 +1,29 @@
-<div align="center">
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+# TalkWithStrangers - Production Ready (No-SQL Edition)
 
-  <h1>Built with AI Studio</h2>
+A fully functional, anonymous 1-on-1 chat application using **Supabase Presence** for zero-config matchmaking.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 🚀 Instant Deployment
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+No setup required. The project uses Supabase Realtime "Presence" (virtual lobbies) to connect users, meaning **you do NOT need to create any database tables or run any SQL**.
 
-</div>
+It works out of the box with the provided credentials.
+
+## 🌟 Architecture
+
+1. **User Joins**: Connects to the `global-lobby-v1` channel.
+2. **Match Found**: Uses Realtime Presence to see if anyone else is waiting.
+3. **P2P Connection**: If a waiter is found, connects instantly via PeerJS.
+
+## 🛠️ Environment Variables
+
+The project comes pre-configured for instant deployment. 
+You only need to set `API_KEY` (Google Gemini API) in your Vercel project settings if you want the "AI Chat" mode to work.
+
+## 📦 Tech Stack
+
+- **React / Vite** (Frontend)
+- **Supabase Realtime** (Signaling/Lobby)
+- **PeerJS** (WebRTC P2P Data)
+- **TailwindCSS** (Styling)
+- **Google Gemini** (AI Persona)
