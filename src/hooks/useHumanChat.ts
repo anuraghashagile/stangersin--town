@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 import { supabase, sendOfflineMessage, fetchOfflineMessages } from '../lib/supabase';
@@ -25,6 +24,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
   const [onlineUsers, setOnlineUsers] = useState<PresenceState[]>([]);
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [disconnectReason, setDisconnectReason] = useState<string | null>(null);
   
   const [incomingDirectMessage, setIncomingDirectMessage] = useState<DirectMessageEvent | null>(null);
   const [incomingReaction, setIncomingReaction] = useState<{ peerId: string, messageId: string, emoji: string, sender: 'stranger' } | null>(null);
@@ -128,20 +128,6 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     };
   }, [userProfile, myPeerId]);
 
-  // --- CLEANUP ON UNLOAD ---
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-       if (mainConnRef.current?.open) {
-          mainConnRef.current.send({ type: 'disconnect' });
-       }
-       directConnsRef.current.forEach(conn => {
-          if (conn.open) conn.send({ type: 'disconnect' });
-       });
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
-
   // --- MATCHMAKING ---
   useEffect(() => {
     // Only proceed if we are actively searching
@@ -221,6 +207,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     if (data.type === 'disconnect') {
         if (isMain) {
            setStatus(ChatMode.DISCONNECTED);
+           setDisconnectReason(data.payload || 'explicit');
            setMessages([]);
         } else {
            conn.close();
@@ -329,18 +316,21 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     if (channelRef.current && myPeerIdRef.current) {
        setStatus(ChatMode.SEARCHING);
        setMessages([]);
+       setDisconnectReason(null);
        failedPeersRef.current.clear(); // Clear blacklist on new search
        channelRef.current.track({ peerId: myPeerIdRef.current, status: 'waiting', timestamp: Date.now(), profile: userProfile! });
     }
   }, [userProfile]);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback((reason: 'explicit' | 'network' | 'inactive' = 'explicit') => {
     // Clear any pending connection timeouts
     if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
     
     // Send explicit disconnect signal before closing
     if (mainConnRef.current?.open) {
-        mainConnRef.current.send({ type: 'disconnect' });
+        try {
+           mainConnRef.current.send({ type: 'disconnect', payload: reason });
+        } catch(e) {}
     }
     
     mainConnRef.current?.close();
@@ -353,6 +343,8 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     }
     setStatus(ChatMode.IDLE);
     setMessages([]);
+    if (reason === 'network') setDisconnectReason('local_network');
+    else setDisconnectReason(null);
   }, [userProfile]);
 
   const sendMessage = useCallback((text: string) => {
@@ -413,6 +405,31 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
        const f = localStorage.getItem('chat_friends');
        if (f) setFriends(JSON.parse(f));
      } catch(e){}
+  }, []);
+
+  // Offline handler
+  useEffect(() => {
+    const handleOffline = () => {
+       if (status === ChatMode.CONNECTED || status === ChatMode.SEARCHING) {
+          disconnect('network');
+       }
+    };
+    window.addEventListener('offline', handleOffline);
+    return () => window.removeEventListener('offline', handleOffline);
+  }, [status, disconnect]);
+
+  // Clean exit handler
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+       if (mainConnRef.current?.open) {
+          mainConnRef.current.send({ type: 'disconnect', payload: 'inactive' });
+       }
+       directConnsRef.current.forEach(conn => {
+          if (conn.open) conn.send({ type: 'disconnect', payload: 'inactive' });
+       });
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
   const rejectFriendRequest = useCallback((peerId: string) => setFriendRequests(p => p.filter(r => r.peerId !== peerId)), []);
@@ -483,6 +500,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     isPeerConnected: (pid: string) => activeDirectConnections.has(pid),
     sendMessage, sendImage, sendAudio, sendReaction, editMessage, sendTyping, sendRecording, updateMyProfile, sendVanishMode,
     sendFriendRequest, acceptFriendRequest, connect, callPeer, disconnect,
-    sendDirectMessage, sendDirectImage, sendDirectAudio, sendDirectTyping, sendDirectFriendRequest, sendDirectReaction
+    sendDirectMessage, sendDirectImage, sendDirectAudio, sendDirectTyping, sendDirectFriendRequest, sendDirectReaction,
+    disconnectReason
   };
 };

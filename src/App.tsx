@@ -48,6 +48,7 @@ export default function App() {
   const [editingMessage, setEditingMessage] = useState<{id: string, text: string} | null>(null);
   const [friendNotification, setFriendNotification] = useState<string | null>(null);
   const [hasChatted, setHasChatted] = useState(false);
+  const [showSafetyWarning, setShowSafetyWarning] = useState(false);
   
   const [isRecording, setIsRecording] = useState(false);
   const userId = useRef(getStoredUserId()).current;
@@ -65,7 +66,8 @@ export default function App() {
     onlineUsers, myPeerId, error, friends, friendRequests, removeFriend, incomingReaction, incomingDirectMessage, incomingDirectStatus, isPeerConnected,
     sendMessage, sendDirectMessage, sendDirectImage, sendDirectAudio, sendDirectTyping, sendDirectFriendRequest, sendDirectReaction,
     sendImage, sendAudio, sendReaction, editMessage, sendTyping, sendRecording, updateMyProfile, sendVanishMode,
-    sendFriendRequest, acceptFriendRequest, rejectFriendRequest, connect, callPeer, disconnect 
+    sendFriendRequest, acceptFriendRequest, rejectFriendRequest, connect, callPeer, disconnect,
+    disconnectReason
   } = useHumanChat(userProfile, userId);
 
   const { globalMessages, sendGlobalMessage } = useGlobalChat(userProfile, myPeerId);
@@ -91,6 +93,11 @@ export default function App() {
   useEffect(() => {
     if (status === ChatMode.CONNECTED) {
       setHasChatted(true);
+      setShowSafetyWarning(true);
+      const timer = setTimeout(() => setShowSafetyWarning(false), 8000); // Auto hide after 8s
+      return () => clearTimeout(timer);
+    } else {
+      setShowSafetyWarning(false);
     }
   }, [status]);
 
@@ -201,6 +208,7 @@ export default function App() {
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (showSafetyWarning) setShowSafetyWarning(false);
     setInputText(e.target.value);
     sendTyping(true);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -277,6 +285,18 @@ export default function App() {
   const isSearching = status === ChatMode.SEARCHING || status === ChatMode.WAITING;
   const isCurrentPartnerFriend = partnerPeerId ? friends.some(f => f.id === partnerPeerId) : false;
 
+  const getDisconnectMessage = () => {
+    if (disconnectReason === 'local_network') return "You disconnected due to an internet issue.";
+    if (status === ChatMode.IDLE) return "You ended the chat.";
+    
+    switch (disconnectReason) {
+      case 'explicit': return "The user ended the chat.";
+      case 'network': return "The user disconnected due to an internet issue.";
+      case 'inactive': return "The user went offline.";
+      default: return "The user ended the chat.";
+    }
+  };
+
   const renderMainContent = () => {
     if (status === ChatMode.IDLE && !userProfile) {
       return (
@@ -339,7 +359,7 @@ export default function App() {
                     <div className="text-center space-y-2">
                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Chat Ended</h3>
                       <p className="text-slate-500 dark:text-slate-400 text-base max-w-xs mx-auto">
-                        The connection has been closed.
+                        {getDisconnectMessage()}
                       </p>
                     </div>
                   </>
@@ -371,6 +391,14 @@ export default function App() {
           (!isConnected && !isSearching) && "opacity-100", 
           isSearching && "invisible" 
         )}>
+          {showSafetyWarning && isConnected && (
+             <div className="absolute -top-10 left-0 right-0 flex justify-center pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-500 z-10 px-4">
+                <div className="bg-white/90 dark:bg-[#0A0A0F]/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-2">
+                  <span className="text-amber-500">⚠️</span> Remember: Avoid sharing personal information with strangers.
+                </div>
+             </div>
+          )}
+          
           <div className={clsx("max-w-4xl mx-auto p-2 sm:p-4", isSearching && "pointer-events-none")}>
             {partnerTyping && (
               <div className="h-5 px-4 mb-1 text-xs text-brand-500 font-medium animate-pulse flex items-center gap-1">typing...</div>
@@ -391,6 +419,7 @@ export default function App() {
                   type="text"
                   value={inputText}
                   onChange={handleTyping}
+                  onFocus={() => setShowSafetyWarning(false)}
                   placeholder={isConnected ? (settings.vanishMode ? "Vanish message..." : "Type a message...") : "Disconnected"}
                   className="w-full bg-transparent border-0 px-4 py-3 placeholder:text-slate-400 focus:outline-none text-slate-900 dark:text-white"
                   autoComplete="off"
