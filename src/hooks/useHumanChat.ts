@@ -77,10 +77,11 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
            return;
         }
 
-        // Check 2: Do we already have an active main connection?
-        // This is CRITICAL for preventing a third user from breaking an existing chat.
-        if (mainConnRef.current && mainConnRef.current.open) {
-           console.warn(`Rejecting random connection from ${conn.peer}: Main connection already active`);
+        // Check 2: Do we already have an active/connecting main connection?
+        // CRITICAL FIX: Check if mainConnRef.current exists (even if not open yet).
+        // This prevents race conditions where two users connect simultaneously.
+        if (mainConnRef.current) {
+           console.warn(`Rejecting random connection from ${conn.peer}: Session busy`);
            conn.close();
            return;
         }
@@ -94,6 +95,10 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
       // If we were trying to connect as matchmaker and failed, reset flag
       if (err.type === 'peer-unavailable' && isMatchmakerRef.current) {
          isMatchmakerRef.current = false;
+         // Clean up if this was the main connection attempt
+         if (statusRef.current === ChatMode.SEARCHING) {
+             mainConnRef.current = null;
+         }
       }
     });
 
@@ -154,6 +159,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
   useEffect(() => {
     // Only act if we are actively searching
     if (status !== ChatMode.SEARCHING) return;
+    // Check if we already have a connection object (even if pending)
     if (!myPeerId || isMatchmakerRef.current || mainConnRef.current) return;
 
     // FIFO Logic:
@@ -177,7 +183,11 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
       
       // Small jitter to reduce collision if two users search exactly simultaneously
       setTimeout(() => {
-         if (statusRef.current !== ChatMode.SEARCHING) return;
+         // Double check we are still searching and haven't been connected to in the meantime
+         if (statusRef.current !== ChatMode.SEARCHING || mainConnRef.current) {
+             isMatchmakerRef.current = false;
+             return;
+         }
 
          try {
             const conn = peerRef.current?.connect(target.peerId, { 
@@ -194,6 +204,8 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
                   if (statusRef.current === ChatMode.SEARCHING && !mainConnRef.current?.open) {
                      console.log("Connection timed out, retrying...");
                      conn.close();
+                     // Important: Clear the ref so we can try again
+                     mainConnRef.current = null;
                      failedPeersRef.current.add(target.peerId);
                      isMatchmakerRef.current = false;
                      // Status remains SEARCHING, effect will re-run
@@ -215,9 +227,9 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     const isMain = metadata.type === 'random';
 
     if (isMain) {
-       // Triple check to avoid overwriting existing connection
-       if (mainConnRef.current && mainConnRef.current.open) {
-         console.warn("Closing new random connection because active one exists");
+       // Strict check: If we already have a connection reference (even if pending), abort.
+       if (mainConnRef.current) {
+         console.warn("Closing new random connection because active/pending one exists");
          conn.close(); 
          return;
        }
@@ -268,7 +280,6 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
           }
         } else {
           setIncomingDirectMessage({ peerId: conn.peer, message: newMsg });
-          // Optional: Send seen for direct messages if needed (skipped for now)
         }
       }
       

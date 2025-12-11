@@ -539,12 +539,12 @@ export const SocialHub = React.memo<SocialHubProps>(({
                    </div>
                 )}
 
-                {/* --- TAB CONTENT --- */}
-                <div className="flex-1 overflow-y-auto p-4 scroll-smooth min-h-0 bg-slate-50/50 dark:bg-black/20">
+                {/* --- TAB CONTENT WRAPPER --- */}
+                <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50 dark:bg-black/20 overflow-hidden relative">
                   
                   {/* ONLINE TAB */}
                   {activeTab === 'online' && (
-                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                       {filteredOnlineUsers.map((user, i) => (
                         <div key={i} className={clsx("flex items-center justify-between p-3.5 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 transition-all duration-100 shadow-sm hover:shadow-md active:scale-[0.99]", user.peerId === myPeerId ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-200 dark:hover:border-white/10")}>
                           <div className="flex flex-1 items-center gap-3" onClick={() => { if (user.peerId !== myPeerId && user.profile) setViewingProfile({ id: user.peerId, profile: user.profile }); }}>
@@ -571,7 +571,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
                   
                   {/* FRIENDS TAB */}
                   {activeTab === 'friends' && (
-                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                     <div className="flex-1 overflow-y-auto p-4 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
                        
                        {/* Section 1: Friend Requests */}
                        {filteredFriendRequests.length > 0 && (
@@ -659,7 +659,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
 
                   {/* RECENT TAB */}
                   {activeTab === 'recent' && (
-                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                       {filteredRecentPeers.map((peer) => (
                         <div key={peer.id} onClick={() => openPrivateChat(peer.peerId, peer.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group active:scale-[0.99]">
                           <div className="flex items-center gap-3">
@@ -678,8 +678,8 @@ export const SocialHub = React.memo<SocialHubProps>(({
 
                   {/* GLOBAL TAB */}
                   {activeTab === 'global' && (
-                    <div className="h-full flex flex-col relative animate-in fade-in slide-in-from-bottom-2 duration-200">
-                      <div className="flex-1 space-y-3 mb-4 min-h-0">
+                    <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-200">
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                          {globalMessages.map(msg => (
                            <div key={msg.id} className={clsx("flex flex-col", msg.sender === 'me' ? "items-end" : "items-start")}>
                               <div className={clsx("px-3 py-2 rounded-2xl text-sm max-w-[85%] break-words shadow-sm", msg.sender === 'me' ? "bg-brand-500 text-white rounded-tr-sm" : "bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-tl-sm")}>
@@ -690,7 +690,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
                          ))}
                          <div ref={messagesEndRef} />
                       </div>
-                      <form onSubmit={handleGlobalSubmit} className="mt-auto flex gap-2 shrink-0 pb-1">
+                      <form onSubmit={handleGlobalSubmit} className="p-4 shrink-0 border-t border-slate-100 dark:border-white/5 bg-white/50 dark:bg-black/20 backdrop-blur-md flex gap-2">
                          <input 
                            className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all disabled:opacity-50" 
                            placeholder={!myPeerId ? "Connecting..." : "Message Global Meet..."} 
