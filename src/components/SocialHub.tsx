@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock } from 'lucide-react';
@@ -356,7 +355,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
     <button 
       onClick={() => setIsOpen(true)}
       className={clsx(
-        "z-[60] w-12 h-12 bg-brand-500 hover:bg-brand-600 text-white rounded-full shadow-2xl shadow-brand-500/40 transition-transform hover:scale-105 active:scale-95 flex items-center justify-center border-2 border-slate-50 dark:border-slate-900 relative pointer-events-auto",
+        "z-[60] w-12 h-12 bg-brand-500 hover:bg-brand-600 text-white rounded-full shadow-2xl shadow-brand-500/40 transition-all duration-200 active:scale-90 hover:scale-105 flex items-center justify-center border-2 border-slate-50 dark:border-slate-900 relative pointer-events-auto",
         !triggerTarget && "fixed bottom-24 right-5 sm:bottom-10 sm:right-10 w-14 h-14" 
       )}
     >
@@ -372,14 +371,14 @@ export const SocialHub: React.FC<SocialHubProps> = ({
   const DrawerOverlay = (
     <>
        {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-end sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-[#0A0A0F] w-full sm:w-[400px] h-[100dvh] sm:h-[650px] rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border-l sm:border border-slate-200 dark:border-white/10 animate-in slide-in-from-bottom-10 sm:slide-in-from-right-10 duration-300 relative font-sans">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-end sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-[#0A0A0F] w-full sm:w-[400px] h-[100dvh] sm:h-[650px] rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border-l sm:border border-slate-200 dark:border-white/10 animate-in slide-in-from-bottom-10 sm:slide-in-from-right-10 duration-300 relative font-sans will-change-transform">
             
             {/* --- HEADER --- */}
             <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-white/5 backdrop-blur-md shrink-0 relative z-10">
               {activePeer ? (
                 <div className="flex items-center gap-3">
-                   <button onClick={closePrivateChat} className="p-2 -ml-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors">
+                   <button onClick={closePrivateChat} className="p-2 -ml-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-all duration-150 active:scale-90">
                      <ArrowLeft size={20} className="text-slate-500 dark:text-slate-200" />
                    </button>
                    <div>
@@ -400,16 +399,16 @@ export const SocialHub: React.FC<SocialHubProps> = ({
               )}
               <div className="flex items-center gap-1">
                 {activePeer && isFriend(activePeer.id) && (
-                   <button onClick={() => setConfirmRemoveFriend(activePeer.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-full hover:bg-black/5 dark:hover:bg-white/5" title="Remove Friend"><Trash2 size={18} /></button>
+                   <button onClick={() => setConfirmRemoveFriend(activePeer.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 active:scale-90" title="Remove Friend"><Trash2 size={18} /></button>
                 )}
-                <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><X size={20} /></button>
+                <button onClick={() => setIsOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-150 active:scale-90"><X size={20} /></button>
               </div>
             </div>
             
             {/* --- REMOVE CONFIRMATION --- */}
             {confirmRemoveFriend && (
-               <div className="absolute inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
-                  <div className="bg-white dark:bg-[#1a1b26] p-6 rounded-2xl w-full max-w-sm text-center border border-slate-200 dark:border-white/10 shadow-2xl animate-in zoom-in-95">
+               <div className="absolute inset-0 z-[110] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+                  <div className="bg-white dark:bg-[#1a1b26] p-6 rounded-2xl w-full max-w-sm text-center border border-slate-200 dark:border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                        <Trash2 size={24} />
                      </div>
@@ -428,7 +427,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                <div className="absolute inset-0 z-[110] bg-white dark:bg-[#0A0A0F] flex flex-col animate-in slide-in-from-bottom duration-300">
                   <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between shrink-0">
                      <h3 className="font-bold text-lg text-slate-900 dark:text-white">Profile</h3>
-                     <button onClick={() => setViewingProfile(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"><X size={20} className="text-slate-500" /></button>
+                     <button onClick={() => setViewingProfile(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-all duration-150 active:scale-90"><X size={20} className="text-slate-500" /></button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center">
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-white text-4xl font-bold shadow-2xl mb-4">{viewingProfile.profile.username[0].toUpperCase()}</div>
@@ -462,7 +461,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                           key={tab} 
                           onClick={() => setActiveTab(tab as any)} 
                           className={clsx(
-                            "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 capitalize whitespace-nowrap relative min-w-[90px]",
+                            "flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 ease-out flex items-center justify-center gap-2 capitalize whitespace-nowrap relative min-w-[90px] active:scale-95",
                             activeTab === tab 
                               ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md" 
                               : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white/50 dark:hover:bg-white/5"
@@ -485,9 +484,9 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                   
                   {/* ONLINE TAB */}
                   {activeTab === 'online' && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                       {onlineUsers.map((user, i) => (
-                        <div key={i} className={clsx("flex items-center justify-between p-3.5 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 transition-all shadow-sm hover:shadow-md", user.peerId === myPeerId ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-200 dark:hover:border-white/10")}>
+                        <div key={i} className={clsx("flex items-center justify-between p-3.5 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 transition-all duration-100 shadow-sm hover:shadow-md active:scale-[0.99]", user.peerId === myPeerId ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-200 dark:hover:border-white/10")}>
                           <div className="flex flex-1 items-center gap-3" onClick={() => { if (user.peerId !== myPeerId && user.profile) setViewingProfile({ id: user.peerId, profile: user.profile }); }}>
                                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-white font-bold shrink-0 shadow-lg relative">
                                   {user.profile?.username?.[0]?.toUpperCase() || '?'}
@@ -512,7 +511,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                   
                   {/* FRIENDS TAB */}
                   {activeTab === 'friends' && (
-                     <div className="space-y-6">
+                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
                        
                        {/* Section 1: Friend Requests */}
                        {friendRequests.length > 0 && (
@@ -525,8 +524,8 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                                       <div><div className="text-sm font-bold text-slate-900 dark:text-white">{req.profile.username}</div><div className="text-xs text-slate-500">Wants to connect</div></div>
                                    </div>
                                    <div className="flex gap-2">
-                                      <button onClick={() => acceptFriendRequest?.(req)} className="p-2 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-colors"><Check size={16} /></button>
-                                      <button onClick={() => rejectFriendRequest?.(req.peerId)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-red-500 hover:text-white transition-colors"><X size={16} /></button>
+                                      <button onClick={() => acceptFriendRequest?.(req)} className="p-2 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90"><Check size={16} /></button>
+                                      <button onClick={() => rejectFriendRequest?.(req.peerId)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-150 active:scale-90"><X size={16} /></button>
                                    </div>
                                 </div>
                              ))}
@@ -541,7 +540,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                               Online ({onlineFriends.length})
                             </div>
                             {onlineFriends.map((friend) => (
-                               <div key={friend.id} onClick={() => openPrivateChat(friend.id, friend.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all group hover:border-brand-200 dark:hover:border-white/10">
+                               <div key={friend.id} onClick={() => openPrivateChat(friend.id, friend.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group hover:border-brand-200 dark:hover:border-white/10 active:scale-[0.99]">
                                  <div className="flex items-center gap-3">
                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-white font-bold shrink-0 relative">
                                      {friend.profile.username[0].toUpperCase()}
@@ -564,7 +563,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                           <div className="space-y-3">
                             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Offline</div>
                             {offlineFriends.map((friend) => (
-                               <div key={friend.id} onClick={() => openPrivateChat(friend.id, friend.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all group grayscale-[0.5] hover:grayscale-0">
+                               <div key={friend.id} onClick={() => openPrivateChat(friend.id, friend.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group grayscale-[0.5] hover:grayscale-0 active:scale-[0.99]">
                                  <div className="flex items-center gap-3">
                                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-300 font-bold shrink-0 relative">
                                      {friend.profile.username[0].toUpperCase()}
@@ -592,9 +591,9 @@ export const SocialHub: React.FC<SocialHubProps> = ({
 
                   {/* RECENT TAB */}
                   {activeTab === 'recent' && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
                       {recentPeers.map((peer) => (
-                        <div key={peer.id} onClick={() => openPrivateChat(peer.peerId, peer.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all group">
+                        <div key={peer.id} onClick={() => openPrivateChat(peer.peerId, peer.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group active:scale-[0.99]">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 text-lg font-bold shrink-0 relative">
                               {peer.profile.username[0].toUpperCase()}
@@ -611,7 +610,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
 
                   {/* GLOBAL TAB */}
                   {activeTab === 'global' && (
-                    <div className="h-full flex flex-col relative">
+                    <div className="h-full flex flex-col relative animate-in fade-in slide-in-from-bottom-2 duration-200">
                       <div className="flex-1 space-y-3 mb-4 min-h-0">
                          {globalMessages.map(msg => (
                            <div key={msg.id} className={clsx("flex flex-col", msg.sender === 'me' ? "items-end" : "items-start")}>
@@ -631,7 +630,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                            onChange={e => setGlobalInput(e.target.value)} 
                            disabled={false}
                          />
-                         <button type="submit" disabled={!myPeerId} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-colors shadow-lg shadow-brand-500/20 disabled:opacity-50"><Send size={18} /></button>
+                         <button type="submit" disabled={!myPeerId} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90 shadow-lg shadow-brand-500/20 disabled:opacity-50"><Send size={18} /></button>
                       </form>
                     </div>
                   )}
@@ -640,7 +639,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
             )}
 
             {activePeer && (
-               <div className="flex-1 flex flex-col p-4 overflow-hidden min-h-0 relative bg-slate-50/30 dark:bg-black/20">
+               <div className="flex-1 flex flex-col p-4 overflow-hidden min-h-0 relative bg-slate-50/30 dark:bg-black/20 animate-in slide-in-from-right-10 duration-200">
                   {peerTypingStatus[activePeer.id] && <div className="absolute top-0 left-0 right-0 h-6 bg-transparent z-10 flex items-center px-4 justify-center"><span className="text-xs text-brand-500 animate-pulse font-medium bg-white/80 dark:bg-black/50 px-2 py-0.5 rounded-full backdrop-blur-sm">typing...</span></div>}
                   <div className="flex-1 space-y-3 mb-4 overflow-y-auto min-h-0 pr-1 pt-4">
                      {localChatHistory.map(msg => (
@@ -651,12 +650,12 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                   </div>
                   <form onSubmit={handlePrivateSubmit} className="mt-auto flex gap-2 shrink-0 pb-1 items-end">
                      <input type="file" accept="image/*" className="hidden" ref={privateFileInputRef} onChange={handlePrivateImageUpload} />
-                     <button type="button" onClick={() => privateFileInputRef.current?.click()} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl transition-colors shrink-0"><ImageIcon size={22} /></button>
-                     {!privateInput.trim() && (isRecordingPrivate ? (<button type="button" onClick={stopPrivateRecording} className="p-2.5 bg-red-500 text-white rounded-xl animate-pulse shrink-0 shadow-lg shadow-red-500/20"><Square size={22} fill="currentColor"/></button>) : (<button type="button" onClick={startPrivateRecording} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl shrink-0"><Mic size={22} /></button>))}
+                     <button type="button" onClick={() => privateFileInputRef.current?.click()} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl transition-all duration-150 active:scale-90 shrink-0"><ImageIcon size={22} /></button>
+                     {!privateInput.trim() && (isRecordingPrivate ? (<button type="button" onClick={stopPrivateRecording} className="p-2.5 bg-red-500 text-white rounded-xl animate-pulse shrink-0 shadow-lg shadow-red-500/20"><Square size={22} fill="currentColor"/></button>) : (<button type="button" onClick={startPrivateRecording} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl shrink-0 transition-all duration-150 active:scale-90"><Mic size={22} /></button>))}
                      <div className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl flex items-center focus-within:ring-2 focus-within:ring-brand-500/50 transition-all">
                         <input className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" placeholder="Type message..." value={privateInput} onChange={handlePrivateTyping} autoFocus />
                      </div>
-                     <button type="submit" disabled={!privateInput.trim()} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-colors disabled:opacity-50 shrink-0 shadow-lg shadow-brand-500/20"><Send size={20} /></button>
+                     <button type="submit" disabled={!privateInput.trim()} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90 disabled:opacity-50 shrink-0 shadow-lg shadow-brand-500/20"><Send size={20} /></button>
                   </form>
                </div>
             )}

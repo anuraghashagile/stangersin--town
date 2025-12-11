@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -15,12 +14,12 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   ...props 
 }) => {
-  const baseStyles = "px-6 py-3 rounded-full font-bold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95 tracking-wide";
+  const baseStyles = "px-6 py-3 rounded-full font-bold transition-all duration-150 ease-out flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98] tracking-wide will-change-transform";
   
   const variants = {
-    primary: "bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/20",
-    secondary: "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700",
-    danger: "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20",
+    primary: "bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30",
+    secondary: "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600",
+    danger: "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 hover:shadow-red-500/30",
     ghost: "bg-transparent hover:bg-slate-800/50 text-slate-400 hover:text-slate-200"
   };
 

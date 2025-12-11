@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Ghost, Moon, Sun, Settings, ArrowLeft, Edit2, AlertTriangle, UserPlus, Check, Heart } from 'lucide-react';
 import { ChatMode, UserProfile } from '../types';
@@ -42,13 +41,13 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="h-16 border-b border-slate-200 dark:border-white/5 bg-white/90 dark:bg-[#05050A]/90 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 sticky top-0 z-50 transition-colors font-sans shrink-0">
+      <header className="h-16 border-b border-slate-200 dark:border-white/5 bg-white/90 dark:bg-[#05050A]/90 backdrop-blur-md flex items-center justify-between px-3 sm:px-6 sticky top-0 z-50 transition-colors duration-200 font-sans shrink-0">
         
         <div className="flex items-center gap-2 sm:gap-3 overflow-hidden flex-1 min-w-0 mr-2">
           {isConnected && (
             <button 
               onClick={handleDisconnectRequest}
-              className="sm:hidden p-2 -ml-2 text-slate-500 dark:text-slate-400 shrink-0"
+              className="sm:hidden p-2 -ml-2 text-slate-500 dark:text-slate-400 shrink-0 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
             >
               <ArrowLeft size={20} />
             </button>
@@ -107,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Theme Toggle */}
           <button 
             onClick={toggleTheme}
-            className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+            className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
           >
             {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
@@ -117,13 +116,13 @@ export const Header: React.FC<HeaderProps> = ({
             <>
                {isConnected && onAddFriend && (
                   isFriend ? (
-                     <div className="p-2 sm:p-2.5 text-emerald-500 bg-emerald-500/10 rounded-full cursor-default" title="Friends">
+                     <div className="p-2 sm:p-2.5 text-emerald-500 bg-emerald-500/10 rounded-full cursor-default animate-in zoom-in duration-200" title="Friends">
                         <Check size={18} strokeWidth={3} />
                      </div>
                   ) : (
                     <button 
                       onClick={onAddFriend}
-                      className="p-2 sm:p-2.5 text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full transition-colors"
+                      className="p-2 sm:p-2.5 text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full transition-all duration-150 active:scale-90"
                       title="Add Friend"
                     >
                       <UserPlus size={18} />
@@ -132,14 +131,14 @@ export const Header: React.FC<HeaderProps> = ({
                )}
                <button 
                  onClick={onEditProfile}
-                 className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                 className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
                  title="Edit Profile"
                >
                  <Edit2 size={18} />
                </button>
                <button 
                  onClick={onOpenSettings}
-                 className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"
+                 className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
                  title="Settings / Vanish Mode"
                >
                 <Ghost size={18} />
@@ -148,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({
                {isConnected && (
                  <button 
                   onClick={handleDisconnectRequest}
-                  className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 px-3 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-colors ml-1"
+                  className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 px-3 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-all duration-150 active:scale-95 ml-1"
                 >
                   <span className="hidden sm:inline">End Chat</span>
                   <span className="sm:hidden">End</span>
@@ -173,13 +172,13 @@ export const Header: React.FC<HeaderProps> = ({
              <div className="flex gap-3">
                <button 
                  onClick={() => setShowConfirmEnd(false)}
-                 className="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                 className="flex-1 py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95"
                >
                  Cancel
                </button>
                <button 
                  onClick={confirmDisconnect}
-                 className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white shadow-lg shadow-red-500/30 hover:bg-red-600 transition-colors"
+                 className="flex-1 py-3 rounded-xl font-bold bg-red-500 text-white shadow-lg shadow-red-500/30 hover:bg-red-600 transition-colors active:scale-95"
                >
                  End Chat
                </button>
