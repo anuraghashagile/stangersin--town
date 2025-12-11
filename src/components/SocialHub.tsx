@@ -39,7 +39,7 @@ interface SocialHubProps {
   isPeerConnected?: (peerId: string) => boolean;
 }
 
-export const SocialHub: React.FC<SocialHubProps> = ({ 
+export const SocialHub = React.memo<SocialHubProps>(({ 
   onlineUsers, 
   onCallPeer,
   globalMessages,
@@ -378,6 +378,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
   const TriggerButton = (
     <button 
       onClick={() => setIsOpen(true)}
+      aria-label="Open Social Hub"
       className={clsx(
         "z-[60] w-12 h-12 bg-brand-500 hover:bg-brand-600 text-white rounded-full shadow-2xl shadow-brand-500/40 transition-all duration-200 active:scale-90 hover:scale-105 flex items-center justify-center border-2 border-slate-50 dark:border-slate-900 relative pointer-events-auto",
         !triggerTarget && "fixed bottom-24 right-5 sm:bottom-10 sm:right-10 w-14 h-14" 
@@ -715,4 +716,6 @@ export const SocialHub: React.FC<SocialHubProps> = ({
   );
   
   return <>{triggerTarget ? createPortal(TriggerButton, triggerTarget) : TriggerButton}{createPortal(DrawerOverlay, document.body)}</>;
-};
+});
+
+SocialHub.displayName = 'SocialHub';

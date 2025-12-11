@@ -47,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
           {isConnected && (
             <button 
               onClick={handleDisconnectRequest}
+              aria-label="Go back"
               className="sm:hidden p-2 -ml-2 text-slate-500 dark:text-slate-400 shrink-0 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
             >
               <ArrowLeft size={20} />
@@ -105,6 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Theme Toggle */}
           <button 
             onClick={toggleTheme}
+            aria-label="Toggle Theme"
             className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
           >
             {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
@@ -121,6 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ) : (
                     <button 
                       onClick={onAddFriend}
+                      aria-label="Add Friend"
                       className="p-2 sm:p-2.5 text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-full transition-all duration-150 active:scale-90"
                       title="Add Friend"
                     >
@@ -130,6 +133,7 @@ export const Header: React.FC<HeaderProps> = ({
                )}
                <button 
                  onClick={onEditProfile}
+                 aria-label="Edit Profile"
                  className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
                  title="Edit Profile"
                >
@@ -137,6 +141,7 @@ export const Header: React.FC<HeaderProps> = ({
                </button>
                <button 
                  onClick={onOpenSettings}
+                 aria-label="Settings"
                  className="p-2 sm:p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-all duration-150 active:scale-90"
                  title="Settings / Vanish Mode"
                >

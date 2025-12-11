@@ -12,7 +12,7 @@ interface MessageBubbleProps {
 
 const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+export const MessageBubble = React.memo<MessageBubbleProps>(({ 
   message, 
   senderName, 
   onReact,
@@ -212,4 +212,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
     </div>
   );
-};
+});
+
+MessageBubble.displayName = 'MessageBubble';

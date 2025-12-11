@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { Send, Loader2, RefreshCw, EyeOff, Shield, Image as ImageIcon, Mic, X, Square, AlertTriangle, UserPlus, Check, Bell, Sparkles, MessageCircle } from 'lucide-react';
 import { supabase, saveMessageToHistory, fetchChatHistory } from './lib/supabase';
 import { Message, ChatMode, UserProfile, AppSettings, SessionType } from './types';
@@ -8,12 +8,14 @@ import { MessageBubble } from './components/MessageBubble';
 import { Button } from './components/Button';
 import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
-import { JoinModal } from './components/JoinModal';
-import { SettingsModal } from './components/SettingsModal';
-import { SocialHub } from './components/SocialHub';
-import { EditMessageModal } from './components/EditMessageModal';
 import Loader from './components/Loader';
 import { clsx } from 'clsx';
+
+// Lazy Load Heavy Components to reduce initial bundle size
+const JoinModal = React.lazy(() => import('./components/JoinModal').then(module => ({ default: module.JoinModal })));
+const SettingsModal = React.lazy(() => import('./components/SettingsModal').then(module => ({ default: module.SettingsModal })));
+const SocialHub = React.lazy(() => import('./components/SocialHub').then(module => ({ default: module.SocialHub })));
+const EditMessageModal = React.lazy(() => import('./components/EditMessageModal').then(module => ({ default: module.EditMessageModal })));
 
 const getStoredUserId = () => {
   if (typeof window === 'undefined') return 'server_user';
@@ -225,7 +227,7 @@ export default function App() {
     }, 100);
   };
 
-  const initiateEdit = (id: string, text: string) => { setEditingMessage({ id, text }); };
+  const initiateEdit = useCallback((id: string, text: string) => { setEditingMessage({ id, text }); }, []);
 
   const saveEditedMessage = (newText: string) => {
     if (editingMessage) {
@@ -507,53 +509,65 @@ export default function App() {
          </div>
       )}
 
-      {renderMainContent()}
+      <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader /></div>}>
+        {renderMainContent()}
+      </Suspense>
 
-      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} settings={settings} onUpdateSettings={handleUpdateSettings}/>
+      <Suspense fallback={null}>
+        <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} settings={settings} onUpdateSettings={handleUpdateSettings}/>
+      </Suspense>
       
-      {showJoinModal && (
-        <JoinModal onClose={() => setShowJoinModal(false)} onJoin={handleJoin} />
-      )}
+      <Suspense fallback={null}>
+        {showJoinModal && (
+          <JoinModal onClose={() => setShowJoinModal(false)} onJoin={handleJoin} />
+        )}
+      </Suspense>
       
-      {showEditProfileModal && userProfile && (
-        <JoinModal onClose={() => setShowEditProfileModal(false)} onJoin={handleUpdateProfile} initialProfile={userProfile} isEditing={true}/>
-      )}
+      <Suspense fallback={null}>
+        {showEditProfileModal && userProfile && (
+          <JoinModal onClose={() => setShowEditProfileModal(false)} onJoin={handleUpdateProfile} initialProfile={userProfile} isEditing={true}/>
+        )}
+      </Suspense>
       
-      <EditMessageModal isOpen={!!editingMessage} onClose={() => setEditingMessage(null)} initialText={editingMessage?.text || ''} onSave={saveEditedMessage} />
+      <Suspense fallback={null}>
+        <EditMessageModal isOpen={!!editingMessage} onClose={() => setEditingMessage(null)} initialText={editingMessage?.text || ''} onSave={saveEditedMessage} />
+      </Suspense>
 
       {userProfile && (
-        <SocialHub 
-          onlineUsers={onlineUsers} 
-          onCallPeer={handleDirectCall} 
-          globalMessages={globalMessages}
-          sendGlobalMessage={sendGlobalMessage}
-          myProfile={userProfile}
-          myPeerId={myPeerId}
-          privateMessages={messages}
-          sendPrivateMessage={sendMessage} 
-          sendDirectMessage={sendDirectMessage} 
-          sendDirectImage={sendDirectImage}
-          sendDirectAudio={sendDirectAudio}
-          sendDirectTyping={sendDirectTyping}
-          sendDirectFriendRequest={sendDirectFriendRequest}
-          sendDirectReaction={sendDirectReaction}
-          sendReaction={sendReaction}
-          currentPartner={partnerProfile}
-          chatStatus={status}
-          error={error}
-          onEditMessage={initiateEdit}
-          sessionType={sessionType}
-          incomingReaction={incomingReaction}
-          incomingDirectMessage={incomingDirectMessage}
-          incomingDirectStatus={incomingDirectStatus} 
-          onCloseDirectChat={() => setSessionType('random')} 
-          friends={friends} 
-          friendRequests={friendRequests}
-          removeFriend={removeFriend}
-          acceptFriendRequest={acceptFriendRequest}
-          rejectFriendRequest={rejectFriendRequest}
-          isPeerConnected={isPeerConnected}
-        />
+        <Suspense fallback={null}>
+          <SocialHub 
+            onlineUsers={onlineUsers} 
+            onCallPeer={handleDirectCall} 
+            globalMessages={globalMessages}
+            sendGlobalMessage={sendGlobalMessage}
+            myProfile={userProfile}
+            myPeerId={myPeerId}
+            privateMessages={messages}
+            sendPrivateMessage={sendMessage} 
+            sendDirectMessage={sendDirectMessage} 
+            sendDirectImage={sendDirectImage}
+            sendDirectAudio={sendDirectAudio}
+            sendDirectTyping={sendDirectTyping}
+            sendDirectFriendRequest={sendDirectFriendRequest}
+            sendDirectReaction={sendDirectReaction}
+            sendReaction={sendReaction}
+            currentPartner={partnerProfile}
+            chatStatus={status}
+            error={error}
+            onEditMessage={initiateEdit}
+            sessionType={sessionType}
+            incomingReaction={incomingReaction}
+            incomingDirectMessage={incomingDirectMessage}
+            incomingDirectStatus={incomingDirectStatus} 
+            onCloseDirectChat={() => setSessionType('random')} 
+            friends={friends} 
+            friendRequests={friendRequests}
+            removeFriend={removeFriend}
+            acceptFriendRequest={acceptFriendRequest}
+            rejectFriendRequest={rejectFriendRequest}
+            isPeerConnected={isPeerConnected}
+          />
+        </Suspense>
       )}
     </div>
   );
