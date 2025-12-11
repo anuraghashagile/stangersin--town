@@ -262,8 +262,13 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
         
         if (isMain) {
           setMessages(prev => [...prev, newMsg]);
+          // AUTO-SEND SEEN RECEIPT
+          if (payload.id) {
+            conn.send({ type: 'seen', messageId: payload.id });
+          }
         } else {
           setIncomingDirectMessage({ peerId: conn.peer, message: newMsg });
+          // Optional: Send seen for direct messages if needed (skipped for now)
         }
       }
       

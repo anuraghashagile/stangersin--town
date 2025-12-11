@@ -204,7 +204,10 @@ export const MessageBubble = React.memo<MessageBubbleProps>(({
             {formatTime(message.timestamp)}
             {isMe && (
               <>
+                 {/* Seen Status: Red Double Tick */}
                  {message.status === 'seen' && <CheckCheck size={14} className="text-red-500 transition-all duration-300" strokeWidth={2} />}
+                 
+                 {/* Sent Status: Normal (Slate) Single Tick */}
                  {message.status !== 'seen' && <Check size={14} className="text-slate-400 dark:text-slate-500" strokeWidth={2} />}
               </>
             )}
