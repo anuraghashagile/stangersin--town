@@ -11,6 +11,7 @@ export enum ChatMode {
 export type SessionType = 'random' | 'direct';
 
 export interface UserProfile {
+  uid?: string; // Stable User ID for friend matching
   username: string;
   age: string;
   gender: string;

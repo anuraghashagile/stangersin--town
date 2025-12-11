@@ -339,6 +339,19 @@ export const SocialHub = React.memo<SocialHubProps>(({
     }
   };
 
+  // Helper to resolve current ID (Peer IDs change per session, UID is stable)
+  const resolveCurrentPeerId = (friend: Friend) => {
+     if (friend.profile.uid) {
+        const online = onlineUsers.find(u => u.profile?.uid === friend.profile.uid);
+        if (online) return online.peerId;
+     }
+     // Fallback to searching by ID (legacy) or just return the last known ID
+     const onlineLegacy = onlineUsers.find(u => u.peerId === friend.id);
+     if (onlineLegacy) return friend.id;
+     
+     return null; // Offline
+  };
+
   const isFriend = (peerId: string) => friends.some(f => f.id === peerId);
   
   const formatLastSeen = (timestamp?: number) => {
@@ -359,8 +372,9 @@ export const SocialHub = React.memo<SocialHubProps>(({
     !searchQuery || f.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const onlineFriends = filteredFriendsList.filter(f => onlineUsers.some(u => u.peerId === f.id));
-  const offlineFriends = filteredFriendsList.filter(f => !onlineUsers.some(u => u.peerId === f.id));
+  // Revised Online/Offline Split using stable UIDs
+  const onlineFriends = filteredFriendsList.filter(f => resolveCurrentPeerId(f) !== null);
+  const offlineFriends = filteredFriendsList.filter(f => resolveCurrentPeerId(f) === null);
   
   const filteredFriendRequests = friendRequests.filter(req => 
     !searchQuery || req.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
@@ -585,8 +599,11 @@ export const SocialHub = React.memo<SocialHubProps>(({
                               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                               Online ({onlineFriends.length})
                             </div>
-                            {onlineFriends.map((friend) => (
-                               <div key={friend.id} onClick={() => openPrivateChat(friend.id, friend.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group hover:border-brand-200 dark:hover:border-white/10 active:scale-[0.99]">
+                            {onlineFriends.map((friend) => {
+                               // Use the current ID for the click handler
+                               const currentId = resolveCurrentPeerId(friend);
+                               return (
+                               <div key={friend.id} onClick={() => currentId && openPrivateChat(currentId, friend.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group hover:border-brand-200 dark:hover:border-white/10 active:scale-[0.99]">
                                  <div className="flex items-center gap-3">
                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-white font-bold shrink-0 relative">
                                      {friend.profile.username[0].toUpperCase()}
@@ -600,7 +617,8 @@ export const SocialHub = React.memo<SocialHubProps>(({
                                  </div>
                                  <div className="p-2 text-slate-300 group-hover:text-brand-500 transition-colors"><MessageCircle size={18} /></div>
                                </div>
-                             ))}
+                               );
+                             })}
                           </div>
                        )}
 

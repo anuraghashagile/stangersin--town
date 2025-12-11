@@ -53,7 +53,13 @@ export default function App() {
   const [showSafetyWarning, setShowSafetyWarning] = useState(false);
   
   const [isRecording, setIsRecording] = useState(false);
+  
+  // Stable ID for friend matching
   const userId = useRef(getStoredUserId()).current;
+
+  // We do NOT pass a persistent PeerID anymore. 
+  // We let PeerJS generate a random ID every session/tab to prevent collisions that cause disconnects.
+  // Instead, we use `userId` inside the profile for stable friend identification.
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,7 +76,7 @@ export default function App() {
     sendImage, sendAudio, sendReaction, editMessage, sendTyping, sendRecording, updateMyProfile, sendVanishMode,
     sendFriendRequest, acceptFriendRequest, rejectFriendRequest, connect, callPeer, disconnect,
     disconnectReason
-  } = useHumanChat(userProfile, userId);
+  } = useHumanChat(userProfile, undefined); // Pass undefined to generate random Peer ID
 
   const { globalMessages, sendGlobalMessage } = useGlobalChat(userProfile, myPeerId);
 
@@ -79,12 +85,14 @@ export default function App() {
     if (savedProfile) {
       try {
         const parsed = JSON.parse(savedProfile);
+        // Ensure profile has the stable userId
+        if (!parsed.uid) parsed.uid = userId;
         setUserProfile(parsed);
       } catch (e) {
         console.error("Failed to load profile", e);
       }
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (remoteVanishMode !== null && remoteVanishMode !== undefined) {
@@ -146,13 +154,28 @@ export default function App() {
     const currentOnlineIds = new Set(onlineUsers.map(u => u.peerId));
     if (friends.length > 0) {
       friends.forEach(friend => {
-        if (currentOnlineIds.has(friend.id) && !prevOnlineUserIds.current.has(friend.id)) {
-          setFriendNotification(`${friend.profile.username} is now online!`);
-          setTimeout(() => setFriendNotification(null), 4000);
+        // Match by UID if available, else fallback to ID
+        const isOnline = onlineUsers.some(u => 
+           (u.profile?.uid && friend.profile.uid && u.profile.uid === friend.profile.uid) ||
+           u.peerId === friend.id
+        );
+
+        if (isOnline) {
+           // We need to track notification state to avoid spam, using a stable ID if possible
+           const trackId = friend.profile.uid || friend.id;
+           if (!prevOnlineUserIds.current.has(trackId)) {
+              setFriendNotification(`${friend.profile.username} is now online!`);
+              setTimeout(() => setFriendNotification(null), 4000);
+           }
         }
       });
     }
-    prevOnlineUserIds.current = currentOnlineIds;
+    
+    // Update tracking set
+    const newTrackSet = new Set<string>();
+    onlineUsers.forEach(u => newTrackSet.add(u.profile?.uid || u.peerId));
+    prevOnlineUserIds.current = newTrackSet;
+    
   }, [onlineUsers, friends, userProfile]);
 
   useEffect(() => {
@@ -164,18 +187,19 @@ export default function App() {
   const handleStartClick = () => setShowJoinModal(true);
 
   const handleJoin = (profile: UserProfile) => {
-    localStorage.setItem('chat_user_profile', JSON.stringify(profile));
-    setUserProfile(profile);
+    // Inject stable ID
+    const profileWithId = { ...profile, uid: userId };
+    localStorage.setItem('chat_user_profile', JSON.stringify(profileWithId));
+    setUserProfile(profileWithId);
     setShowJoinModal(false);
     setSessionType('random');
-    // We intentionally DO NOT call connect() here. 
-    // User lands in lobby (online/idle) and must click "Find New Stranger" to search.
   };
 
   const handleUpdateProfile = (profile: UserProfile) => {
-    localStorage.setItem('chat_user_profile', JSON.stringify(profile));
-    setUserProfile(profile);
-    updateMyProfile(profile);
+    const profileWithId = { ...profile, uid: userId };
+    localStorage.setItem('chat_user_profile', JSON.stringify(profileWithId));
+    setUserProfile(profileWithId);
+    updateMyProfile(profileWithId);
     setShowEditProfileModal(false);
   };
 
@@ -220,8 +244,6 @@ export default function App() {
   const handleNewChat = () => {
     setSessionType('random'); 
     disconnect();
-    // Immediate reconnect call to start searching
-    // status goes IDLE -> SEARCHING
     setTimeout(() => {
        connect();
     }, 100);
@@ -313,6 +335,7 @@ export default function App() {
 
     return (
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+         {/* SEARCHING OVERLAY */}
          {isSearching && (
            <div className="absolute inset-0 z-30 bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
              <div className="relative mb-8"><Loader /></div>
@@ -329,14 +352,20 @@ export default function App() {
            </div>
          )}
 
+        {/* SAFETY WARNING */}
+        {showSafetyWarning && isConnected && (
+             <div className="absolute top-4 left-0 right-0 z-50 flex justify-center px-4 animate-in fade-in slide-in-from-top-2 duration-500 pointer-events-none">
+                <div className="bg-amber-500/10 backdrop-blur-md border border-amber-500/20 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2">
+                  <Shield size={14} /> Beware: Do not share personal info.
+                </div>
+             </div>
+        )}
+
         <div className={clsx(
           "flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 w-full max-w-4xl mx-auto z-10 relative scroll-smooth",
           (messages.length === 0 && (status === ChatMode.DISCONNECTED || status === ChatMode.IDLE)) && "flex flex-col justify-center"
         )}>
-          {!partnerProfile && status === ChatMode.CONNECTED && (
-              <div className="text-center text-xs text-slate-400 my-4">Connected with {partnerProfile?.username || 'Stranger'}...</div>
-          )}
-          
+          {/* Messages */}
           {messages.map((msg) => (
               <div key={msg.id} className={clsx("transition-opacity duration-1000", msg.isVanish && "animate-pulse")}>
                 <MessageBubble 
@@ -393,13 +422,6 @@ export default function App() {
           (!isConnected && !isSearching) && "opacity-100", 
           isSearching && "invisible" 
         )}>
-          {showSafetyWarning && isConnected && (
-             <div className="absolute -top-10 left-0 right-0 flex justify-center pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-500 z-10 px-4">
-                <div className="bg-white/90 dark:bg-[#0A0A0F]/90 backdrop-blur-md px-4 py-1.5 rounded-full text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-2">
-                  <span className="text-amber-500">⚠️</span> Remember: Avoid sharing personal information with strangers.
-                </div>
-             </div>
-          )}
           
           <div className={clsx("max-w-4xl mx-auto p-2 sm:p-4", isSearching && "pointer-events-none")}>
             {partnerTyping && (
