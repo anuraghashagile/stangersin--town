@@ -78,9 +78,8 @@ export const Header: React.FC<HeaderProps> = ({
             // Default Header
             <div className="flex items-center gap-3">
               <div className="text-brand-500 dark:text-white shrink-0 hidden sm:block">
-                 {/* Custom Infinity Loop SVG */}
-                 <svg viewBox="0 0 100 100" className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round">
-                    <path d="M30,50 C30,30 50,30 50,50 C50,70 70,70 70,50 C70,30 50,30 50,50 C50,70 30,70 30,50 Z" />
+                 <svg viewBox="0 0 200 100" className="w-10 h-5" fill="none" stroke="currentColor" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M 30,50 C 30,30 40,20 55,20 C 70,20 80,30 100,50 C 120,70 130,80 145,80 C 160,80 170,70 170,50 C 170,30 160,20 145,20 C 130,20 120,30 100,50 C 80,70 70,80 55,80 C 40,80 30,70 30,50 Z" />
                  </svg>
               </div>
               <div>

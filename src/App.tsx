@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, RefreshCw, EyeOff, Shield, Image as ImageIcon, Mic, X, Square, AlertTriangle, UserPlus, Check, Bell, Sparkles } from 'lucide-react';
+import { Send, Loader2, RefreshCw, EyeOff, Shield, Image as ImageIcon, Mic, X, Square, AlertTriangle, UserPlus, Check, Bell, Sparkles, MessageCircle } from 'lucide-react';
 import { supabase, saveMessageToHistory, fetchChatHistory } from './lib/supabase';
 import { Message, ChatMode, UserProfile, AppSettings, SessionType } from './types';
 import { useHumanChat } from './hooks/useHumanChat';
@@ -346,7 +346,7 @@ export default function App() {
                 ) : (
                   <>
                     <div className="w-20 h-20 bg-brand-50 dark:bg-brand-900/10 rounded-full flex items-center justify-center text-brand-500 mb-2">
-                       <Sparkles size={40} />
+                       <MessageCircle size={40} />
                     </div>
                     <div className="text-center space-y-2">
                       <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Start Matching</h3>

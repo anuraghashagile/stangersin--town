@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock } from 'lucide-react';
+import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock, Search } from 'lucide-react';
 import { UserProfile, PresenceState, RecentPeer, Message, ChatMode, SessionType, Friend, FriendRequest, DirectMessageEvent, DirectStatusEvent } from '../types';
 import { clsx } from 'clsx';
 import { MessageBubble } from './MessageBubble';
@@ -76,6 +76,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
   const [recentPeers, setRecentPeers] = useState<RecentPeer[]>([]);
   const [friends, setFriends] = useState<Friend[]>(friendsProp);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [globalInput, setGlobalInput] = useState('');
   const [privateInput, setPrivateInput] = useState('');
@@ -106,6 +107,11 @@ export const SocialHub: React.FC<SocialHubProps> = ({
   }, [triggerTarget, chatStatus]);
 
   useEffect(() => { setFriends(friendsProp); }, [friendsProp]);
+
+  // Reset search when changing tabs
+  useEffect(() => {
+    setSearchQuery('');
+  }, [activeTab]);
 
   useEffect(() => {
     const storedActive = localStorage.getItem('active_social_peer');
@@ -348,8 +354,26 @@ export const SocialHub: React.FC<SocialHubProps> = ({
      return Object.values(unreadCounts).reduce((a, b) => a + b, 0) + friendRequests.length;
   };
 
-  const onlineFriends = friends.filter(f => onlineUsers.some(u => u.peerId === f.id));
-  const offlineFriends = friends.filter(f => !onlineUsers.some(u => u.peerId === f.id));
+  // --- Filtering Logic ---
+  const filteredFriendsList = friends.filter(f => 
+    !searchQuery || f.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const onlineFriends = filteredFriendsList.filter(f => onlineUsers.some(u => u.peerId === f.id));
+  const offlineFriends = filteredFriendsList.filter(f => !onlineUsers.some(u => u.peerId === f.id));
+  
+  const filteredFriendRequests = friendRequests.filter(req => 
+    !searchQuery || req.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredOnlineUsers = onlineUsers.filter(u => 
+    !searchQuery || (u.profile?.username || 'Anonymous').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const filteredRecentPeers = recentPeers.filter(p =>
+    !searchQuery || p.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
 
   const TriggerButton = (
     <button 
@@ -479,13 +503,34 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                   </div>
                 </div>
 
+                {/* --- SEARCH BAR --- */}
+                {['online', 'friends', 'recent'].includes(activeTab) && (
+                   <div className="px-4 pb-2 shrink-0 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="relative">
+                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                         <input 
+                            type="text" 
+                            placeholder={`Search ${activeTab}...`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-100 dark:bg-white/5 border-none rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/50 placeholder:text-slate-400 transition-all"
+                         />
+                         {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
+                               <X size={14} />
+                            </button>
+                         )}
+                      </div>
+                   </div>
+                )}
+
                 {/* --- TAB CONTENT --- */}
                 <div className="flex-1 overflow-y-auto p-4 scroll-smooth min-h-0 bg-slate-50/50 dark:bg-black/20">
                   
                   {/* ONLINE TAB */}
                   {activeTab === 'online' && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                      {onlineUsers.map((user, i) => (
+                      {filteredOnlineUsers.map((user, i) => (
                         <div key={i} className={clsx("flex items-center justify-between p-3.5 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 transition-all duration-100 shadow-sm hover:shadow-md active:scale-[0.99]", user.peerId === myPeerId ? "opacity-60 cursor-not-allowed" : "cursor-pointer hover:border-brand-200 dark:hover:border-white/10")}>
                           <div className="flex flex-1 items-center gap-3" onClick={() => { if (user.peerId !== myPeerId && user.profile) setViewingProfile({ id: user.peerId, profile: user.profile }); }}>
                                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-brand-400 to-violet-500 flex items-center justify-center text-white font-bold shrink-0 shadow-lg relative">
@@ -505,7 +550,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                           </div>
                         </div>
                       ))}
-                      {onlineUsers.length === 0 && <div className="text-center text-slate-500 py-10">No users online.</div>}
+                      {filteredOnlineUsers.length === 0 && <div className="text-center text-slate-500 py-10">{searchQuery ? 'No matching users found.' : 'No users online.'}</div>}
                     </div>
                   )}
                   
@@ -514,10 +559,10 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-200">
                        
                        {/* Section 1: Friend Requests */}
-                       {friendRequests.length > 0 && (
+                       {filteredFriendRequests.length > 0 && (
                           <div className="space-y-3">
                              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Friend Requests</div>
-                             {friendRequests.map((req, idx) => (
+                             {filteredFriendRequests.map((req, idx) => (
                                 <div key={idx} className="p-3 bg-white dark:bg-white/5 border border-brand-500/20 rounded-2xl shadow-sm flex items-center justify-between">
                                    <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold">{req.profile.username[0].toUpperCase()}</div>
@@ -579,11 +624,15 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                           </div>
                        )}
 
-                       {friends.length === 0 && friendRequests.length === 0 && (
+                       {filteredFriendsList.length === 0 && filteredFriendRequests.length === 0 && (
                           <div className="flex flex-col items-center justify-center py-12 text-center opacity-60">
                              <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4 text-slate-300 dark:text-slate-500"><UserPlus size={32}/></div>
-                             <p className="text-slate-500 dark:text-slate-400 font-medium">No friends yet</p>
-                             <p className="text-xs text-slate-400 max-w-[200px] mt-1">Connect with people in Global Chat or Online list to add them.</p>
+                             <p className="text-slate-500 dark:text-slate-400 font-medium">
+                               {searchQuery ? 'No matching friends found' : 'No friends yet'}
+                             </p>
+                             {!searchQuery && (
+                               <p className="text-xs text-slate-400 max-w-[200px] mt-1">Connect with people in Global Chat or Online list to add them.</p>
+                             )}
                           </div>
                        )}
                      </div>
@@ -592,7 +641,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                   {/* RECENT TAB */}
                   {activeTab === 'recent' && (
                     <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                      {recentPeers.map((peer) => (
+                      {filteredRecentPeers.map((peer) => (
                         <div key={peer.id} onClick={() => openPrivateChat(peer.peerId, peer.profile)} className="flex items-center justify-between p-3 bg-white dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer hover:shadow-md transition-all duration-100 group active:scale-[0.99]">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 text-lg font-bold shrink-0 relative">
@@ -604,7 +653,7 @@ export const SocialHub: React.FC<SocialHubProps> = ({
                           <div className="p-2 text-slate-400 group-hover:text-brand-500"><MessageCircle size={18} /></div>
                         </div>
                       ))}
-                      {recentPeers.length === 0 && <div className="text-center text-slate-500 py-10">No recent history.</div>}
+                      {filteredRecentPeers.length === 0 && <div className="text-center text-slate-500 py-10">{searchQuery ? 'No matching history.' : 'No recent history.'}</div>}
                     </div>
                   )}
 
