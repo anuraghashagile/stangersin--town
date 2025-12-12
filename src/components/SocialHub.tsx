@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock, Search, Info } from 'lucide-react';
+import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock, Search, Info, Reply as ReplyIcon } from 'lucide-react';
 import { UserProfile, PresenceState, RecentPeer, Message, ChatMode, SessionType, Friend, FriendRequest, DirectMessageEvent, DirectStatusEvent, ReplyInfo } from '../types';
 import { clsx } from 'clsx';
 import { MessageBubble } from './MessageBubble';
@@ -83,6 +83,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
   const [isRecordingPrivate, setIsRecordingPrivate] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ReplyInfo | null>(null);
   const [showGlobalToast, setShowGlobalToast] = useState(false);
+  const [hubNotification, setHubNotification] = useState<string | null>(null);
   
   const [activePeer, setActivePeer] = useState<{id: string, profile: UserProfile} | null>(null);
   const [localChatHistory, setLocalChatHistory] = useState<Message[]>([]);
@@ -111,6 +112,14 @@ export const SocialHub = React.memo<SocialHubProps>(({
 
   useEffect(() => { setFriends(friendsProp); }, [friendsProp]);
 
+  // Handle Hub Notifications
+  useEffect(() => {
+    if (hubNotification) {
+      const t = setTimeout(() => setHubNotification(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [hubNotification]);
+
   // Reset search when changing tabs
   useEffect(() => {
     setSearchQuery('');
@@ -123,7 +132,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
       if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
       globalToastTimerRef.current = setTimeout(() => {
         setShowGlobalToast(false);
-      }, 10000); // 10 seconds
+      }, 10000); 
     } else {
       setShowGlobalToast(false);
       if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
@@ -141,11 +150,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
     } catch(e) {}
   }, []);
 
-  useEffect(() => {
-    if (activePeer) localStorage.setItem('active_social_peer', JSON.stringify(activePeer));
-    else localStorage.removeItem('active_social_peer');
-  }, [activePeer]);
-
+  // Update Recents on changes
   useEffect(() => {
     const storedRecents = localStorage.getItem('recent_peers');
     if (storedRecents) try { setRecentPeers(JSON.parse(storedRecents)); } catch (e) {}
@@ -328,7 +333,6 @@ export const SocialHub = React.memo<SocialHubProps>(({
         text: msg.text || (msg.type === 'image' ? 'Image' : 'Audio'),
         senderName: msg.sender === 'me' ? 'You' : (msg.senderName || 'Stranger')
      });
-     // If input is not focused, maybe focus it?
   };
 
   const openPrivateChat = (peerId: string, profile?: UserProfile) => {
@@ -347,11 +351,18 @@ export const SocialHub = React.memo<SocialHubProps>(({
   };
 
   const handleFriendRequest = (peerId: string) => {
-     // Use the provided handler if available, otherwise just use the ID
      if (sendDirectFriendRequest) {
         sendDirectFriendRequest(peerId);
+        setHubNotification("Friend request sent");
      }
      setViewingProfile(null);
+  };
+
+  const handleAcceptRequest = (req: FriendRequest) => {
+    if (acceptFriendRequest) {
+      acceptFriendRequest(req);
+      setHubNotification("Accepted friend request");
+    }
   };
 
   const confirmRemove = () => {
@@ -361,17 +372,14 @@ export const SocialHub = React.memo<SocialHubProps>(({
     }
   };
 
-  // Helper to resolve current ID (Peer IDs change per session, UID is stable)
   const resolveCurrentPeerId = (friend: Friend) => {
      if (friend.profile.uid) {
         const online = onlineUsers.find(u => u.profile?.uid === friend.profile.uid);
         if (online) return online.peerId;
      }
-     // Fallback to searching by ID (legacy) or just return the last known ID
      const onlineLegacy = onlineUsers.find(u => u.peerId === friend.id);
      if (onlineLegacy) return friend.id;
-     
-     return null; // Offline
+     return null; 
   };
 
   const isFriend = (peerId: string) => friends.some(f => f.id === peerId);
@@ -389,12 +397,10 @@ export const SocialHub = React.memo<SocialHubProps>(({
      return (Object.values(unreadCounts) as number[]).reduce((a, b) => a + b, 0) + friendRequests.length;
   };
 
-  // --- Filtering Logic ---
   const filteredFriendsList = friends.filter(f => 
     !searchQuery || f.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  // Revised Online/Offline Split using stable UIDs
   const onlineFriends = filteredFriendsList.filter(f => resolveCurrentPeerId(f) !== null);
   const offlineFriends = filteredFriendsList.filter(f => resolveCurrentPeerId(f) === null);
   
@@ -435,6 +441,15 @@ export const SocialHub = React.memo<SocialHubProps>(({
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-end sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white dark:bg-[#0A0A0F] w-full sm:w-[400px] h-[100dvh] sm:h-[650px] rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border-l sm:border border-slate-200 dark:border-white/10 animate-in slide-in-from-bottom-10 sm:slide-in-from-right-10 duration-300 relative font-sans will-change-transform">
             
+            {/* --- NOTIFICATION TOAST --- */}
+            {hubNotification && (
+               <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top-5 duration-300 pointer-events-none w-max">
+                  <div className="bg-brand-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-xs font-bold">
+                     <Check size={14} /> {hubNotification}
+                  </div>
+               </div>
+            )}
+
             {/* --- HEADER --- */}
             <div className="p-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white/80 dark:bg-white/5 backdrop-blur-md shrink-0 relative z-10">
               {activePeer ? (
@@ -606,7 +621,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
                                       <div><div className="text-sm font-bold text-slate-900 dark:text-white">{req.profile.username}</div><div className="text-xs text-slate-500">Wants to connect</div></div>
                                    </div>
                                    <div className="flex gap-2">
-                                      <button onClick={() => acceptFriendRequest?.(req)} className="p-2 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90"><Check size={16} /></button>
+                                      <button onClick={() => handleAcceptRequest(req)} className="p-2 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90"><Check size={16} /></button>
                                       <button onClick={() => rejectFriendRequest?.(req.peerId)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-xl hover:bg-red-500 hover:text-white transition-all duration-150 active:scale-90"><X size={16} /></button>
                                    </div>
                                 </div>

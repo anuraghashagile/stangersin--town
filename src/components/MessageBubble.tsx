@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Message } from '../types';
 import { clsx } from 'clsx';
 import { Smile, Pencil, Check, CheckCheck, Reply } from 'lucide-react';
@@ -79,7 +79,6 @@ export const MessageBubble = React.memo<MessageBubbleProps>(({
     }
   };
 
-  // Format timestamp using user's local timezone and preference
   const formatTime = (timestamp: number) => {
     try {
       return new Date(timestamp).toLocaleTimeString(undefined, {
@@ -92,7 +91,6 @@ export const MessageBubble = React.memo<MessageBubbleProps>(({
     }
   };
 
-  // Entry animation based on sender - optimized for 60fps
   const entryAnimation = isMe 
     ? "animate-in slide-in-from-right-2 fade-in duration-200 ease-out" 
     : "animate-in slide-in-from-left-2 fade-in duration-200 ease-out";
@@ -103,6 +101,7 @@ export const MessageBubble = React.memo<MessageBubbleProps>(({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onDoubleClick={() => onReply && onReply(message)}
       style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
     >
       {/* Swipe Reply Icon Indicator */}
@@ -151,33 +150,19 @@ export const MessageBubble = React.memo<MessageBubbleProps>(({
         </div>
         
         <div className="relative group/bubble">
-          {/* Edit Button (Desktop Hover) */}
-          {isMe && message.type === 'text' && onEdit && (
-             <button 
-               onClick={handleEditClick}
-               className="absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 opacity-0 group-hover/bubble:opacity-100 transition-all duration-200 hidden sm:block hover:bg-slate-200 dark:hover:bg-white/20 active:scale-90"
-             >
-               <Pencil size={12} />
-             </button>
-          )}
-
-           {/* Reply Button (Desktop Hover) */}
-           {onReply && (
-             <button 
-               onClick={() => onReply(message)}
-               className={clsx(
-                 "absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 opacity-0 group-hover/bubble:opacity-100 transition-all duration-200 hidden sm:block hover:bg-slate-200 dark:hover:bg-white/20 active:scale-90",
-                 isMe ? "-left-16" : "-right-8"
-               )}
-             >
-               <Reply size={12} />
-             </button>
-           )}
+          {/* Edit/Reply Buttons (Desktop Hover) */}
+          <div className={clsx("absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/bubble:opacity-100 transition-all duration-200 hidden sm:flex", isMe ? "-left-20" : "-right-20")}>
+             {isMe && message.type === 'text' && onEdit && (
+                <button onClick={handleEditClick} className="p-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/20 active:scale-90"><Pencil size={12} /></button>
+             )}
+             {onReply && (
+                <button onClick={() => onReply(message)} className="p-1.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/20 active:scale-90"><Reply size={12} /></button>
+             )}
+          </div>
 
           <div 
             ref={bubbleRef}
             onContextMenu={handleContextMenu}
-            onDoubleClick={() => setShowPicker(true)}
             className={clsx(
               "rounded-2xl shadow-sm relative transition-all duration-150 ease-out overflow-visible select-none active:scale-[0.98]",
               isMe 
@@ -257,10 +242,8 @@ export const MessageBubble = React.memo<MessageBubbleProps>(({
             {formatTime(message.timestamp)}
             {isMe && (
               <>
-                 {/* Seen Status: Red Double Tick */}
+                 {/* Seen Status */}
                  {message.status === 'seen' && <CheckCheck size={14} className="text-red-500 transition-all duration-300" strokeWidth={2} />}
-                 
-                 {/* Sent Status: Normal (Slate) Single Tick */}
                  {message.status !== 'seen' && <Check size={14} className="text-slate-400 dark:text-slate-500" strokeWidth={2} />}
               </>
             )}
