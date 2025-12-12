@@ -48,7 +48,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-700 to-slate-900 dark:from-white dark:via-slate-200 dark:to-slate-400">
             Strangers
           </span>
-          <span className="text-brand-500">.</span>
+          <span className="text-brand-500">town</span>
         </h1>
 
         <p className="text-lg sm:text-xl text-slate-500 dark:text-slate-400 mb-8 max-w-xs sm:max-w-sm font-medium leading-relaxed">

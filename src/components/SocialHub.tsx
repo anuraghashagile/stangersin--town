@@ -703,7 +703,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
                     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-200 relative">
                       {/* Global Intro Toast */}
                       {showGlobalToast && (
-                         <div className="absolute top-4 left-4 right-4 z-20 animate-in slide-in-from-top-2 fade-in duration-300 pointer-events-none flex justify-center">
+                         <div className="absolute top-4 left-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300 pointer-events-none flex justify-center">
                             <div className="bg-slate-800/90 dark:bg-slate-700/90 text-white backdrop-blur-md px-4 py-2.5 rounded-full shadow-xl border border-slate-700/50 dark:border-white/10 text-xs font-medium text-center leading-relaxed flex items-center gap-2 max-w-[90%]">
                                <Info size={14} className="shrink-0 text-brand-400" />
                                <span>Previous chats are hidden. You’ll receive new messages from now.</span>
