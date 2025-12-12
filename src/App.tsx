@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { Send, Loader2, RefreshCw, EyeOff, Shield, Image as ImageIcon, Mic, X, Square, AlertTriangle, UserPlus, Check, Bell, Sparkles, MessageCircle } from 'lucide-react';
 import { supabase, saveMessageToHistory, fetchChatHistory } from './lib/supabase';
-import { Message, ChatMode, UserProfile, AppSettings, SessionType } from './types';
+import { Message, ChatMode, UserProfile, AppSettings, SessionType, ReplyInfo } from './types';
 import { useHumanChat } from './hooks/useHumanChat';
 import { useGlobalChat } from './hooks/useGlobalChat';
 import { MessageBubble } from './components/MessageBubble';
@@ -51,6 +51,7 @@ export default function App() {
   const [friendNotification, setFriendNotification] = useState<string | null>(null);
   const [hasChatted, setHasChatted] = useState(false);
   const [showSafetyWarning, setShowSafetyWarning] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ReplyInfo | null>(null);
   
   const [isRecording, setIsRecording] = useState(false);
   
@@ -75,7 +76,7 @@ export default function App() {
     sendMessage, sendDirectMessage, sendDirectImage, sendDirectAudio, sendDirectTyping, sendDirectFriendRequest, sendDirectReaction,
     sendImage, sendAudio, sendReaction, editMessage, sendTyping, sendRecording, updateMyProfile, sendVanishMode,
     sendFriendRequest, acceptFriendRequest, rejectFriendRequest, connect, callPeer, disconnect,
-    disconnectReason
+    disconnectReason, notification
   } = useHumanChat(userProfile, undefined); // Pass undefined to generate random Peer ID
 
   const { globalMessages, sendGlobalMessage } = useGlobalChat(userProfile, myPeerId);
@@ -108,6 +109,7 @@ export default function App() {
       return () => clearTimeout(timer);
     } else {
       setShowSafetyWarning(false);
+      setReplyingTo(null);
     }
   }, [status]);
 
@@ -217,7 +219,7 @@ export default function App() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
-    sendMessage(inputText);
+    sendMessage(inputText, replyingTo || undefined);
     if (settings.vanishMode) {
       setMessages(prev => {
         const last = prev[prev.length - 1];
@@ -231,6 +233,7 @@ export default function App() {
     }
     sendTyping(false);
     setInputText('');
+    setReplyingTo(null);
   };
 
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,6 +260,14 @@ export default function App() {
       setEditingMessage(null);
     }
   };
+
+  const handleReply = useCallback((msg: Message) => {
+      setReplyingTo({
+         id: msg.id,
+         text: msg.text || (msg.type === 'image' ? 'Image' : 'Audio'),
+         senderName: msg.sender === 'me' ? 'You' : (partnerProfile?.username || 'Stranger')
+      });
+  }, [partnerProfile]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -373,6 +384,7 @@ export default function App() {
                     senderName={partnerProfile?.username} 
                     onReact={(emoji) => sendReaction(msg.id, emoji)}
                     onEdit={initiateEdit}
+                    onReply={handleReply}
                 />
               </div>
           ))}
@@ -424,9 +436,22 @@ export default function App() {
         )}>
           
           <div className={clsx("max-w-4xl mx-auto p-2 sm:p-4", isSearching && "pointer-events-none")}>
+            {/* Typing Indicator */}
             {partnerTyping && (
               <div className="h-5 px-4 mb-1 text-xs text-brand-500 font-medium animate-pulse flex items-center gap-1">typing...</div>
             )}
+            
+            {/* Replying To Banner */}
+            {replyingTo && (
+              <div className="flex items-center justify-between bg-slate-100 dark:bg-white/10 p-2 rounded-lg border-l-4 border-brand-500 mb-2 animate-in slide-in-from-bottom-2">
+                 <div className="text-xs truncate max-w-[80%]">
+                    <div className="font-bold text-brand-600 dark:text-brand-400">Replying to {replyingTo.senderName}</div>
+                    <div className="text-slate-600 dark:text-slate-300 truncate">{replyingTo.text}</div>
+                 </div>
+                 <button type="button" onClick={() => setReplyingTo(null)} className="p-1 hover:bg-slate-200 dark:hover:bg-white/20 rounded-full"><X size={14}/></button>
+              </div>
+            )}
+
             <form onSubmit={handleSendMessage} className="flex gap-2 items-end relative">
               <div id="social-hub-trigger-anchor" className="absolute bottom-[calc(100%+8px)] right-0 z-30 w-12 h-12 pointer-events-none"></div>
               <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} disabled={!isConnected}/>
@@ -511,6 +536,14 @@ export default function App() {
          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top-5 duration-300">
             <div className="bg-emerald-500 text-white px-4 py-2.5 rounded-full shadow-lg flex items-center gap-3 text-sm font-bold">
                <Bell size={16} fill="currentColor" /> {friendNotification}
+            </div>
+         </div>
+      )}
+      
+      {notification && (
+         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top-5 duration-300">
+            <div className="bg-brand-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-bold">
+               <Check size={16} /> {notification}
             </div>
          </div>
       )}

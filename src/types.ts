@@ -26,6 +26,12 @@ export interface Reaction {
   sender: 'me' | 'stranger';
 }
 
+export interface ReplyInfo {
+  id: string;
+  text: string;
+  senderName: string;
+}
+
 export interface Message {
   id: string;
   text?: string;
@@ -40,6 +46,7 @@ export interface Message {
   reactions?: Reaction[]; // Added for reactions
   isEdited?: boolean; // Added for edit status
   status?: 'sent' | 'seen'; // Added for read receipts
+  replyTo?: ReplyInfo; // Added for Reply functionality
 }
 
 export interface PeerData {
@@ -48,6 +55,7 @@ export interface PeerData {
   dataType?: MessageType;
   messageId?: string; // For targeting specific messages (reactions/edits/seen)
   id?: string; // For syncing message IDs across peers
+  replyTo?: ReplyInfo; // Added for syncing replies
 }
 
 // Presence state for the lobby

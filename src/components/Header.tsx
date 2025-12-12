@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <div>
                 <h1 className="font-bold text-lg leading-tight tracking-tight">
-                   <span className="text-slate-900 dark:text-white">Strangers</span><span className="text-red-500">In</span><span className="text-slate-900 dark:text-white">Town</span>
+                   <span className="text-slate-900 dark:text-white">Strangers</span><span className="text-red-500">town</span>
                 </h1>
                 <div className="flex items-center gap-1.5">
                   <span className="relative flex h-2 w-2">

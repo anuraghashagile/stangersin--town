@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock, Search } from 'lucide-react';
-import { UserProfile, PresenceState, RecentPeer, Message, ChatMode, SessionType, Friend, FriendRequest, DirectMessageEvent, DirectStatusEvent } from '../types';
+import { Users, History, Globe, MessageCircle, X, Wifi, Heart, ArrowLeft, Send, UserPlus, Check, Trash2, Image as ImageIcon, Mic, Square, MapPin, Smile, Clock, Search, Info } from 'lucide-react';
+import { UserProfile, PresenceState, RecentPeer, Message, ChatMode, SessionType, Friend, FriendRequest, DirectMessageEvent, DirectStatusEvent, ReplyInfo } from '../types';
 import { clsx } from 'clsx';
 import { MessageBubble } from './MessageBubble';
 import { Button } from './Button';
@@ -15,7 +15,7 @@ interface SocialHubProps {
   myPeerId?: string | null;
   privateMessages: Message[]; 
   sendPrivateMessage: (text: string) => void; 
-  sendDirectMessage?: (peerId: string, text: string, id?: string) => void; 
+  sendDirectMessage?: (peerId: string, text: string, id?: string, replyTo?: ReplyInfo) => void; 
   sendDirectImage?: (peerId: string, base64: string, id?: string) => void;
   sendDirectAudio?: (peerId: string, base64: string, id?: string) => void;
   sendDirectTyping?: (peerId: string, isTyping: boolean) => void;
@@ -81,6 +81,8 @@ export const SocialHub = React.memo<SocialHubProps>(({
   const [globalInput, setGlobalInput] = useState('');
   const [privateInput, setPrivateInput] = useState('');
   const [isRecordingPrivate, setIsRecordingPrivate] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ReplyInfo | null>(null);
+  const [showGlobalToast, setShowGlobalToast] = useState(false);
   
   const [activePeer, setActivePeer] = useState<{id: string, profile: UserProfile} | null>(null);
   const [localChatHistory, setLocalChatHistory] = useState<Message[]>([]);
@@ -95,6 +97,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const globalToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const checkAnchor = () => {
@@ -113,23 +116,28 @@ export const SocialHub = React.memo<SocialHubProps>(({
     setSearchQuery('');
   }, [activeTab]);
 
+  // Handle Global Toast Logic
   useEffect(() => {
-    const storedActive = localStorage.getItem('active_social_peer');
-    if (storedActive) {
-      try {
-        const parsed = JSON.parse(storedActive);
-        if (parsed?.id && parsed?.profile) {
-          setActivePeer(parsed);
-          setIsOpen(true);
-          onCallPeer(parsed.id, parsed.profile);
-        }
-      } catch (e) {}
+    if (activeTab === 'global') {
+      setShowGlobalToast(true);
+      if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
+      globalToastTimerRef.current = setTimeout(() => {
+        setShowGlobalToast(false);
+      }, 10000); // 10 seconds
+    } else {
+      setShowGlobalToast(false);
+      if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
     }
+    return () => {
+      if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
+    };
+  }, [activeTab]);
+
+  // Restore legacy recents logic
+  useEffect(() => {
     try {
       const storedRecents = localStorage.getItem('recent_peers');
       if (storedRecents) setRecentPeers(JSON.parse(storedRecents));
-      const storedFriends = localStorage.getItem('chat_friends');
-      if (storedFriends) setFriends(JSON.parse(storedFriends));
     } catch(e) {}
   }, []);
 
@@ -232,11 +240,12 @@ export const SocialHub = React.memo<SocialHubProps>(({
     e.preventDefault();
     if (privateInput.trim() && activePeer) {
       const newMsgId = Date.now().toString() + Math.random().toString(36).substring(2);
-      const newMsg: Message = { id: newMsgId, text: privateInput, sender: 'me', timestamp: Date.now(), type: 'text', reactions: [], status: 'sent' };
+      const newMsg: Message = { id: newMsgId, text: privateInput, sender: 'me', timestamp: Date.now(), type: 'text', reactions: [], status: 'sent', replyTo: replyingTo || undefined };
       addMessageToLocal(newMsg, activePeer.id);
-      sendDirectMessage?.(activePeer.id, privateInput, newMsgId);
+      sendDirectMessage?.(activePeer.id, privateInput, newMsgId, replyingTo || undefined);
       sendDirectTyping?.(activePeer.id, false);
       setPrivateInput('');
+      setReplyingTo(null);
     }
   };
 
@@ -313,6 +322,15 @@ export const SocialHub = React.memo<SocialHubProps>(({
     }
   };
 
+  const handleReply = (msg: Message) => {
+     setReplyingTo({
+        id: msg.id,
+        text: msg.text || (msg.type === 'image' ? 'Image' : 'Audio'),
+        senderName: msg.sender === 'me' ? 'You' : (msg.senderName || 'Stranger')
+     });
+     // If input is not focused, maybe focus it?
+  };
+
   const openPrivateChat = (peerId: string, profile?: UserProfile) => {
     if (profile) {
       setActivePeer({ id: peerId, profile });
@@ -325,10 +343,14 @@ export const SocialHub = React.memo<SocialHubProps>(({
   const closePrivateChat = () => {
     setActivePeer(null);
     onCloseDirectChat?.();
+    setReplyingTo(null);
   };
 
   const handleFriendRequest = (peerId: string) => {
-     sendDirectFriendRequest?.(peerId);
+     // Use the provided handler if available, otherwise just use the ID
+     if (sendDirectFriendRequest) {
+        sendDirectFriendRequest(peerId);
+     }
      setViewingProfile(null);
   };
 
@@ -355,16 +377,16 @@ export const SocialHub = React.memo<SocialHubProps>(({
   const isFriend = (peerId: string) => friends.some(f => f.id === peerId);
   
   const formatLastSeen = (timestamp?: number) => {
-     if (!timestamp) return 'Offline';
+     if (!timestamp) return 'Last seen offline';
      const diff = Date.now() - timestamp;
-     if (diff < 60000) return 'Just now';
-     if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
-     if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
-     return new Date(timestamp).toLocaleDateString();
+     if (diff < 60000) return 'Last seen just now';
+     if (diff < 3600000) return `Last seen ${Math.floor(diff/60000)}m ago`;
+     if (diff < 86400000) return `Last seen ${Math.floor(diff/3600000)}h ago`;
+     return `Last seen ${new Date(timestamp).toLocaleDateString()}`;
   };
 
   const getTotalUnreadCount = () => {
-     return Object.values(unreadCounts).reduce((a, b) => a + b, 0) + friendRequests.length;
+     return (Object.values(unreadCounts) as number[]).reduce((a, b) => a + b, 0) + friendRequests.length;
   };
 
   // --- Filtering Logic ---
@@ -428,7 +450,7 @@ export const SocialHub = React.memo<SocialHubProps>(({
                        {onlineUsers.some(u => u.peerId === activePeer.id) ? (
                           <span className="text-xs text-emerald-500 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"/> Online</span>
                        ) : (
-                          <span className="text-xs text-slate-400 font-medium">Last seen {formatLastSeen(friends.find(f => f.id === activePeer.id)?.lastSeen)}</span>
+                          <span className="text-xs text-slate-400 font-medium">{formatLastSeen(friends.find(f => f.id === activePeer.id)?.lastSeen)}</span>
                        )}
                      </div>
                    </div>
@@ -678,7 +700,17 @@ export const SocialHub = React.memo<SocialHubProps>(({
 
                   {/* GLOBAL TAB */}
                   {activeTab === 'global' && (
-                    <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-200 relative">
+                      {/* Global Intro Toast */}
+                      {showGlobalToast && (
+                         <div className="absolute top-4 left-4 right-4 z-20 animate-in slide-in-from-top-2 fade-in duration-300 pointer-events-none flex justify-center">
+                            <div className="bg-slate-800/90 dark:bg-slate-700/90 text-white backdrop-blur-md px-4 py-2.5 rounded-full shadow-xl border border-slate-700/50 dark:border-white/10 text-xs font-medium text-center leading-relaxed flex items-center gap-2 max-w-[90%]">
+                               <Info size={14} className="shrink-0 text-brand-400" />
+                               <span>Previous chats are hidden. You’ll receive new messages from now.</span>
+                            </div>
+                         </div>
+                      )}
+                      
                       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                          {globalMessages.map(msg => (
                            <div key={msg.id} className={clsx("flex flex-col", msg.sender === 'me' ? "items-end" : "items-start")}>
@@ -711,19 +743,31 @@ export const SocialHub = React.memo<SocialHubProps>(({
                   {peerTypingStatus[activePeer.id] && <div className="absolute top-0 left-0 right-0 h-6 bg-transparent z-10 flex items-center px-4 justify-center"><span className="text-xs text-brand-500 animate-pulse font-medium bg-white/80 dark:bg-black/50 px-2 py-0.5 rounded-full backdrop-blur-sm">typing...</span></div>}
                   <div className="flex-1 space-y-3 mb-4 overflow-y-auto min-h-0 pr-1 pt-4">
                      {localChatHistory.map(msg => (
-                       <MessageBubble key={msg.id} message={msg} senderName={activePeer.profile.username} onReact={(emoji) => handleReactionSend(msg.id, emoji)} onEdit={onEditMessage} />
+                       <MessageBubble key={msg.id} message={msg} senderName={activePeer.profile.username} onReact={(emoji) => handleReactionSend(msg.id, emoji)} onEdit={onEditMessage} onReply={handleReply} />
                      ))}
                      {localChatHistory.length === 0 && <div className="text-center text-slate-500 text-sm mt-10">Start a conversation with {activePeer.profile.username}.<br/><span className="text-xs opacity-70">Messages are saved locally.</span></div>}
                      <div ref={privateMessagesEndRef} />
                   </div>
-                  <form onSubmit={handlePrivateSubmit} className="mt-auto flex gap-2 shrink-0 pb-1 items-end">
-                     <input type="file" accept="image/*" className="hidden" ref={privateFileInputRef} onChange={handlePrivateImageUpload} />
-                     <button type="button" onClick={() => privateFileInputRef.current?.click()} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl transition-all duration-150 active:scale-90 shrink-0"><ImageIcon size={22} /></button>
-                     {!privateInput.trim() && (isRecordingPrivate ? (<button type="button" onClick={stopPrivateRecording} className="p-2.5 bg-red-500 text-white rounded-xl animate-pulse shrink-0 shadow-lg shadow-red-500/20"><Square size={22} fill="currentColor"/></button>) : (<button type="button" onClick={startPrivateRecording} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl shrink-0 transition-all duration-150 active:scale-90"><Mic size={22} /></button>))}
-                     <div className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl flex items-center focus-within:ring-2 focus-within:ring-brand-500/50 transition-all">
-                        <input className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" placeholder="Type message..." value={privateInput} onChange={handlePrivateTyping} autoFocus />
+                  <form onSubmit={handlePrivateSubmit} className="mt-auto flex flex-col gap-2 shrink-0 pb-1">
+                     {/* Replying To Banner */}
+                     {replyingTo && (
+                       <div className="flex items-center justify-between bg-slate-200 dark:bg-white/10 p-2 rounded-lg border-l-4 border-brand-500 mb-1">
+                          <div className="text-xs truncate max-w-[80%]">
+                             <div className="font-bold text-brand-600 dark:text-brand-400">Replying to {replyingTo.senderName}</div>
+                             <div className="text-slate-600 dark:text-slate-300 truncate">{replyingTo.text}</div>
+                          </div>
+                          <button type="button" onClick={() => setReplyingTo(null)} className="p-1 hover:bg-slate-300 dark:hover:bg-white/20 rounded-full"><X size={14}/></button>
+                       </div>
+                     )}
+                     <div className="flex gap-2 items-end">
+                       <input type="file" accept="image/*" className="hidden" ref={privateFileInputRef} onChange={handlePrivateImageUpload} />
+                       <button type="button" onClick={() => privateFileInputRef.current?.click()} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl transition-all duration-150 active:scale-90 shrink-0"><ImageIcon size={22} /></button>
+                       {!privateInput.trim() && (isRecordingPrivate ? (<button type="button" onClick={stopPrivateRecording} className="p-2.5 bg-red-500 text-white rounded-xl animate-pulse shrink-0 shadow-lg shadow-red-500/20"><Square size={22} fill="currentColor"/></button>) : (<button type="button" onClick={startPrivateRecording} className="p-2.5 text-slate-400 hover:text-brand-500 hover:bg-white dark:hover:bg-white/10 rounded-xl shrink-0 transition-all duration-150 active:scale-90"><Mic size={22} /></button>))}
+                       <div className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl flex items-center focus-within:ring-2 focus-within:ring-brand-500/50 transition-all">
+                          <input className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" placeholder="Type message..." value={privateInput} onChange={handlePrivateTyping} autoFocus />
+                       </div>
+                       <button type="submit" disabled={!privateInput.trim()} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90 disabled:opacity-50 shrink-0 shadow-lg shadow-brand-500/20"><Send size={20} /></button>
                      </div>
-                     <button type="submit" disabled={!privateInput.trim()} className="p-3 bg-brand-500 text-white rounded-xl hover:bg-brand-600 transition-all duration-150 active:scale-90 disabled:opacity-50 shrink-0 shadow-lg shadow-brand-500/20"><Send size={20} /></button>
                   </form>
                </div>
             )}

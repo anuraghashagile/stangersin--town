@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Peer, { DataConnection } from 'peerjs';
 import { supabase, fetchOfflineMessages } from '../lib/supabase';
-import { Message, ChatMode, PeerData, PresenceState, UserProfile, ConnectionMetadata, DirectMessageEvent, DirectStatusEvent, Friend, FriendRequest } from '../types';
+import { Message, ChatMode, PeerData, PresenceState, UserProfile, ConnectionMetadata, DirectMessageEvent, DirectStatusEvent, Friend, FriendRequest, ReplyInfo } from '../types';
 import { ICE_SERVERS, STRANGER_DISCONNECTED_MSG } from '../constants';
 
 const MATCHMAKING_CHANNEL = 'global-lobby-v1';
@@ -28,7 +28,8 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [activeDirectConnections, setActiveDirectConnections] = useState<Set<string>>(new Set());
-  
+  const [notification, setNotification] = useState<string | null>(null);
+
   const peerRef = useRef<Peer | null>(null);
   const mainConnRef = useRef<DataConnection | null>(null);
   const directConnsRef = useRef<Map<string, DataConnection>>(new Map());
@@ -44,6 +45,54 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  // Load friends from local storage
+  useEffect(() => {
+    const storedFriends = localStorage.getItem('chat_friends');
+    if (storedFriends) {
+      setFriends(JSON.parse(storedFriends));
+    }
+  }, []);
+
+  // Sync Friends Status (Last Seen)
+  useEffect(() => {
+    if (onlineUsers.length > 0 && friends.length > 0) {
+      setFriends(prev => {
+         let changed = false;
+         const updated = prev.map(friend => {
+            const isOnline = onlineUsers.some(u => 
+               (u.profile?.uid && friend.profile.uid && u.profile.uid === friend.profile.uid) ||
+               u.peerId === friend.id
+            );
+            
+            if (isOnline) {
+               // Update last seen to now if they are online
+               if (!friend.lastSeen || (Date.now() - friend.lastSeen > 60000)) {
+                  changed = true;
+                  return { ...friend, lastSeen: Date.now() };
+               }
+            } else {
+               // They are offline, keep the last timestamp we saw them
+            }
+            return friend;
+         });
+         
+         if (changed) {
+            localStorage.setItem('chat_friends', JSON.stringify(updated));
+            return updated;
+         }
+         return prev;
+      });
+    }
+  }, [onlineUsers]);
+
+  // Clear notification after 3s
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // --- 1. INITIALIZE PEER ---
   useEffect(() => {
@@ -66,22 +115,13 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
       const meta = conn.metadata as ConnectionMetadata;
       
       // STRICT CHECK 1: Only accept random connections if we are actively searching or waiting
-      // This prevents "User B" from getting connected if they are just idle or in menu
       if (meta?.type === 'random') {
         const currentStatus = statusRef.current;
-        
-        // Check 1: Are we in the right mode?
         if (currentStatus !== ChatMode.SEARCHING && currentStatus !== ChatMode.WAITING) {
-           console.warn(`Rejecting random connection from ${conn.peer}: Status is ${currentStatus}`);
            conn.close();
            return;
         }
-
-        // Check 2: Do we already have an active/connecting main connection?
-        // CRITICAL FIX: Check if mainConnRef.current exists (even if not open yet).
-        // This prevents race conditions where two users connect simultaneously.
         if (mainConnRef.current) {
-           console.warn(`Rejecting random connection from ${conn.peer}: Session busy`);
            conn.close();
            return;
         }
@@ -95,7 +135,6 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
       // If we were trying to connect as matchmaker and failed, reset flag
       if (err.type === 'peer-unavailable' && isMatchmakerRef.current) {
          isMatchmakerRef.current = false;
-         // Clean up if this was the main connection attempt
          if (statusRef.current === ChatMode.SEARCHING) {
              mainConnRef.current = null;
          }
@@ -157,16 +196,9 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
 
   // --- MATCHMAKING (FIFO Queue) ---
   useEffect(() => {
-    // Only act if we are actively searching
     if (status !== ChatMode.SEARCHING) return;
-    // Check if we already have a connection object (even if pending)
     if (!myPeerId || isMatchmakerRef.current || mainConnRef.current) return;
 
-    // FIFO Logic:
-    // 1. Filter for users who are 'waiting'
-    // 2. Exclude self
-    // 3. Exclude recently failed peers
-    // 4. Sort by timestamp ASCENDING (Oldest waiter gets priority)
     const waiters = onlineUsers
       .filter(u => 
         u.status === 'waiting' && 
@@ -177,13 +209,9 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
 
     if (waiters.length > 0) {
       const target = waiters[0];
-      console.log(`Attempting FIFO Match: ${target.peerId} (Waited ${(Date.now() - target.timestamp)/1000}s)`);
-      
       isMatchmakerRef.current = true;
       
-      // Small jitter to reduce collision if two users search exactly simultaneously
       setTimeout(() => {
-         // Double check we are still searching and haven't been connected to in the meantime
          if (statusRef.current !== ChatMode.SEARCHING || mainConnRef.current) {
              isMatchmakerRef.current = false;
              return;
@@ -197,25 +225,19 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
 
             if (conn) {
                setupConnection(conn, { type: 'random' });
-               
-               // Timeout failsafe
                if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
                connectionTimeoutRef.current = setTimeout(() => {
                   if (statusRef.current === ChatMode.SEARCHING && !mainConnRef.current?.open) {
-                     console.log("Connection timed out, retrying...");
                      conn.close();
-                     // Important: Clear the ref so we can try again
                      mainConnRef.current = null;
                      failedPeersRef.current.add(target.peerId);
                      isMatchmakerRef.current = false;
-                     // Status remains SEARCHING, effect will re-run
                   }
                }, 5000);
             } else {
                isMatchmakerRef.current = false;
             }
          } catch (e) {
-            console.error("Connection attempt failed", e);
             isMatchmakerRef.current = false;
          }
       }, Math.random() * 500 + 100);
@@ -227,9 +249,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     const isMain = metadata.type === 'random';
 
     if (isMain) {
-       // Strict check: If we already have a connection reference (even if pending), abort.
        if (mainConnRef.current) {
-         console.warn("Closing new random connection because active/pending one exists");
          conn.close(); 
          return;
        }
@@ -247,12 +267,9 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
         setPartnerPeerId(conn.peer);
         isMatchmakerRef.current = false;
         failedPeersRef.current.clear();
-        
-        // Update presence to 'paired'
         channelRef.current?.track({ peerId: myPeerId, status: 'paired', timestamp: Date.now(), profile: userProfile });
       }
 
-      // Handshake: Send my profile immediately
       if (userProfile) {
          conn.send({ type: 'profile', payload: userProfile });
       }
@@ -269,12 +286,12 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
           sender: 'stranger',
           timestamp: Date.now(),
           type: payload.dataType || 'text',
-          reactions: []
+          reactions: [],
+          replyTo: payload.replyTo
         };
         
         if (isMain) {
           setMessages(prev => [...prev, newMsg]);
-          // AUTO-SEND SEEN RECEIPT
           if (payload.id) {
             conn.send({ type: 'seen', messageId: payload.id });
           }
@@ -284,7 +301,6 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
       }
       
       else if (payload.type === 'profile') {
-         // Received partner's profile
          const profile = payload.payload as UserProfile;
          if (isMain) {
             setPartnerProfile(profile);
@@ -344,7 +360,6 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
       else if (payload.type === 'friend_request') {
          if (payload.payload?.username) {
             setFriendRequests(prev => {
-               // Check if we already have a request from this UID if available, else PeerId
                const existing = prev.find(r => 
                  (r.profile.uid && payload.payload.uid && r.profile.uid === payload.payload.uid) || 
                  r.peerId === conn.peer
@@ -363,8 +378,10 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
                   f.id === conn.peer
                );
                if (existing) return prev;
-               return [...prev, { id: conn.peer, profile: payload.payload, addedAt: Date.now() }];
+               return [...prev, { id: conn.peer, profile: payload.payload, addedAt: Date.now(), lastSeen: Date.now() }];
             });
+            // Show notification
+            setNotification(`${payload.payload.username} accepted your friend request.`);
          }
       }
       
@@ -376,7 +393,6 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     });
 
     conn.on('close', () => {
-      console.log(`Connection closed with ${conn.peer}`);
       if (isMain) {
         if (statusRef.current === ChatMode.CONNECTED) {
           handleMainDisconnect('network');
@@ -437,12 +453,12 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     setStatus(ChatMode.IDLE);
   };
 
-  const sendMessage = (text: string) => {
+  const sendMessage = (text: string, replyTo?: ReplyInfo) => {
     const id = Date.now().toString();
-    const msg: Message = { id, text, sender: 'me', timestamp: Date.now(), type: 'text', reactions: [], status: 'sent' };
+    const msg: Message = { id, text, sender: 'me', timestamp: Date.now(), type: 'text', reactions: [], status: 'sent', replyTo };
     setMessages(prev => [...prev, msg]);
     if (mainConnRef.current?.open) {
-      mainConnRef.current.send({ type: 'message', payload: text, dataType: 'text', id });
+      mainConnRef.current.send({ type: 'message', payload: text, dataType: 'text', id, replyTo });
     }
   };
 
@@ -499,6 +515,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
   const sendFriendRequest = () => {
      if (mainConnRef.current?.open && userProfile) {
         mainConnRef.current.send({ type: 'friend_request', payload: userProfile });
+        setNotification("Friend request sent.");
      }
   };
   
@@ -506,11 +523,13 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
      const conn = directConnsRef.current.get(peerId);
      if (conn?.open && userProfile) {
         conn.send({ type: 'friend_request', payload: userProfile });
+        setNotification("Friend request sent.");
      } else if (peerRef.current) {
         const temp = peerRef.current.connect(peerId, { metadata: { type: 'direct' }});
         temp.on('open', () => {
            temp.send({ type: 'profile', payload: userProfile });
            temp.send({ type: 'friend_request', payload: userProfile });
+           setNotification("Friend request sent.");
            setTimeout(() => temp.close(), 2000); 
         });
      }
@@ -523,7 +542,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
            f.id === request.peerId
         );
         if (existing) return prev;
-        return [...prev, { id: request.peerId, profile: request.profile, addedAt: Date.now() }];
+        return [...prev, { id: request.peerId, profile: request.profile, addedAt: Date.now(), lastSeen: Date.now() }];
      });
      setFriendRequests(prev => prev.filter(r => r.peerId !== request.peerId));
      
@@ -535,7 +554,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
      // Save to local storage
      setTimeout(() => {
         const current = JSON.parse(localStorage.getItem('chat_friends') || '[]');
-        const updated = [...current, { id: request.peerId, profile: request.profile, addedAt: Date.now() }];
+        const updated = [...current, { id: request.peerId, profile: request.profile, addedAt: Date.now(), lastSeen: Date.now() }];
         localStorage.setItem('chat_friends', JSON.stringify(updated));
      }, 0);
   };
@@ -563,10 +582,10 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
      }
   };
   
-  const sendDirectMessage = (peerId: string, text: string, id?: string) => {
+  const sendDirectMessage = (peerId: string, text: string, id?: string, replyTo?: ReplyInfo) => {
      const conn = directConnsRef.current.get(peerId);
      if (conn?.open) {
-        conn.send({ type: 'message', payload: text, dataType: 'text', id });
+        conn.send({ type: 'message', payload: text, dataType: 'text', id, replyTo });
      }
   };
   
@@ -603,6 +622,7 @@ export const useHumanChat = (userProfile: UserProfile | null, persistentId?: str
     updateMyProfile, sendVanishMode,
     sendFriendRequest, acceptFriendRequest, rejectFriendRequest,
     connect, disconnect, callPeer,
-    disconnectReason
+    disconnectReason,
+    notification
   };
 };
